@@ -5,7 +5,18 @@ use goulash::{
 };
 
 fn main() {
-    let src = String::from(r#"let x = 2; print (!false);"#);
+    let src = String::from(
+        r#"
+    let x = 2;
+    {
+        print x;
+        x = "test";
+        let y = 2;
+    };
+    print x_str;
+    print y;
+    "#,
+    );
     let src = &src;
     let (errors, stmts) = goulash::parse(src);
 

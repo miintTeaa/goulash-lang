@@ -92,6 +92,14 @@ impl<T> ScopeStack<T> {
         }
         None
     }
+
+    pub fn push_scope(&mut self) {
+        self.scopes.push(Scope::new());
+    }
+
+    pub fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
 }
 
 impl<T> Index<usize> for ScopeStack<T> {

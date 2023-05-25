@@ -2,7 +2,10 @@ use std::fmt::Debug;
 
 use crate::span::Span;
 
-use super::ops::{BinaryOp, UnaryOp};
+use super::{
+    ops::{BinaryOp, UnaryOp},
+    Stmt,
+};
 
 pub struct Expr {
     pub span: Span,
@@ -50,6 +53,12 @@ impl Debug for Expr {
                 write!(f, "Expr:VAR({span})")
             }
             ExprData::Error => write!(f, "Expr:ERROR({span})"),
+            ExprData::Block(stmts, expr) => f
+                .debug_tuple(&format!("Expr:BLOCK"))
+                .field(&span)
+                .field(&stmts)
+                .field(&expr)
+                .finish(),
         }
     }
 }
@@ -59,6 +68,7 @@ pub enum ExprData {
     Op(BinaryOp, Box<Expr>, Box<Expr>),
     UnOp(UnaryOp, Box<Expr>),
     Lit(ExprValueType),
+    Block(Vec<Stmt>, Option<Box<Expr>>),
     Var,
     Error,
 }

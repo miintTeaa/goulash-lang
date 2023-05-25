@@ -1,6 +1,6 @@
 use crate::{
     ast::ops::{BinaryOp, UnaryOp},
-    iir::{IIRExpr, IIRExprData},
+    iir::{IIRExpr, IIRExprData, IIRStmt},
     span::Span,
     value::Value,
 };
@@ -12,6 +12,9 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
             IIRExprData::Const(val) => self.visit_const(val, expr.span),
             IIRExprData::Var => self.visit_var(expr.span),
+            IIRExprData::Block(stmts, last_expr) => {
+                self.visit_block(stmts, last_expr.as_deref(), expr.span)
+            }
         }
     }
 
@@ -19,4 +22,5 @@ pub trait IIRExprVisitor<T> {
     fn visit_const(&mut self, val: &Value, span: Span) -> T;
     fn visit_binary_op(&mut self, op: BinaryOp, lhs: &IIRExpr, rhs: &IIRExpr, span: Span) -> T;
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, span: Span) -> T;
+    fn visit_block(&mut self, stmts: &[IIRStmt], expr: Option<&IIRExpr>, span: Span) -> T;
 }

@@ -61,10 +61,11 @@ impl<'src> Parser<'src> {
         self.peek() == Token::EOF
     }
 
-    pub fn try_consume(&mut self, token: Token) -> Result<(), LangError> {
+    pub fn try_consume(&mut self, token: Token) -> Result<Span, LangError> {
         if self.peek() == token {
+            let span = self.span();
             self.next();
-            Ok(())
+            Ok(span)
         } else {
             Err(LangError::new_syntax(
                 format!("expected {token}, got {}", self.peek()),
@@ -98,5 +99,9 @@ impl<'src> Parser<'src> {
 
     pub fn push_stmt(&mut self, stmt: Stmt) {
         self.ast.push(stmt)
+    }
+
+    pub fn pop_stmt(&mut self) -> Option<Stmt> {
+        self.ast.pop()
     }
 }

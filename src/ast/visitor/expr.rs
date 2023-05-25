@@ -3,6 +3,7 @@ use crate::ast::ops::UnaryOp;
 use crate::ast::Expr;
 use crate::ast::ExprData;
 use crate::ast::ExprValueType;
+use crate::ast::Stmt;
 use crate::span::Span;
 
 pub trait ExprVisitor<T> {

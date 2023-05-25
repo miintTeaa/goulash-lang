@@ -136,4 +136,28 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             UnaryOp::Not => IntpControlFlow::Val(Value::Bool(!operand.is_truthy())),
         }
     }
+
+    fn visit_block(
+        &mut self,
+        stmts: &[crate::iir::IIRStmt],
+        expr: Option<&IIRExpr>,
+        _span: Span,
+    ) -> IntpControlFlow {
+        self.scopes.push_scope();
+        for stmt in stmts {
+            match self.visit_stmt(stmt) {
+                v @ IntpControlFlow::Ret(_) => {
+                    self.scopes.pop_scope();
+                    return v;
+                }
+                IntpControlFlow::Val(_) => (),
+            }
+        }
+        let cflw = match expr {
+            Some(expr) => self.visit_expr(expr),
+            None => IntpControlFlow::Val(Value::None),
+        };
+        self.scopes.pop_scope();
+        cflw
+    }
 }

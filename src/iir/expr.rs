@@ -10,6 +10,8 @@ use crate::{
     value::Value,
 };
 
+use super::IIRStmt;
+
 pub struct IIRExpr {
     pub span: Span,
     data: IIRExprData,
@@ -50,6 +52,17 @@ impl IIRExpr {
                 ExprData::Lit(ExprValueType::None) => IIRExprData::Const(Value::None),
                 ExprData::Var => IIRExprData::Var,
                 ExprData::Error => panic!("tried to convert ExprData::Error to IIRExprData"),
+                ExprData::Block(old_stmts, old_expr) => {
+                    let mut stmts = Vec::new();
+                    for stmt in old_stmts {
+                        stmts.push(IIRStmt::try_from(stmt, src)?);
+                    }
+                    let expr = match old_expr {
+                        Some(old_expr) => Some(Box::new(IIRExpr::try_from(*old_expr, src)?)),
+                        None => None,
+                    };
+                    IIRExprData::Block(stmts, expr)
+                }
             },
         })
     }
@@ -76,6 +89,7 @@ impl IIRExpr {
 pub enum IIRExprData {
     Op(BinaryOp, Box<IIRExpr>, Box<IIRExpr>),
     UnOp(UnaryOp, Box<IIRExpr>),
+    Block(Vec<IIRStmt>, Option<Box<IIRExpr>>),
     Const(Value),
     Var,
 }
