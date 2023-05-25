@@ -175,6 +175,16 @@ fn lex(lexer: &mut Lexer) -> Result<(Token, Span), LangError> {
             lexer.next_char();
             Ok($token)
         }};
+
+        ($token:expr, $pat:pat => $tk:expr) => {{
+            lexer.next_char();
+            if matches!(lexer.peek_char(), $pat) {
+                lexer.next_char();
+                Ok($tk)
+            } else {
+                Ok($token)
+            }
+        }};
     }
     match lexer.peek_char() {
         None => m!(Token::EOF),
@@ -197,7 +207,8 @@ fn lex(lexer: &mut Lexer) -> Result<(Token, Span), LangError> {
         Some('-') => m!(Token::Minus),
         Some('*') => m!(Token::Star),
         Some('/') => m!(Token::Slash),
-        Some('=') => m!(Token::Equal),
+        Some('=') => m!(Token::Equal, Some('=') => Token::EqualEqual),
+        Some('!') => m!(Token::Bang, Some('=') => Token::BangEqual),
         Some(';') => m!(Token::Semicolon),
         Some('{') => m!(Token::LCurly),
         Some('}') => m!(Token::RCurly),

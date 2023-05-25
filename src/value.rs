@@ -139,6 +139,20 @@ impl Neg for Value {
     }
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::None, _) | (_, Self::None) => true,
+            (Self::Int(i1), Self::Int(i2)) => i1 == i2,
+            (Self::Float(f1), Self::Float(f2)) => f1 == f2,
+            (Self::Int(i), Self::Float(f)) | (Self::Float(f), Self::Int(i)) => *i == *f as i32,
+            (Self::Str(s1), Self::Str(s2)) => s1 == s2,
+            (Self::Bool(b1), Self::Bool(b2)) => b1 == b2,
+            _ => false,
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Value::*;

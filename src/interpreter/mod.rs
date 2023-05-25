@@ -100,6 +100,16 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             Sub => op!(-),
             Mul => op!(*),
             Div => op!(/),
+            Eq => {
+                let lhs = get_or_ret!(self.visit_expr(lhs));
+                let rhs = get_or_ret!(self.visit_expr(rhs));
+                IntpControlFlow::Val(Value::Bool(lhs == rhs))
+            }
+            NotEq => {
+                let lhs = get_or_ret!(self.visit_expr(lhs));
+                let rhs = get_or_ret!(self.visit_expr(rhs));
+                IntpControlFlow::Val(Value::Bool(lhs != rhs))
+            }
             Assign => match lhs.data() {
                 IIRExprData::Var => {
                     let rhs = get_or_ret!(self.visit_expr(rhs));
@@ -136,6 +146,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         let operand = get_or_ret!(self.visit_expr(operand));
         match op {
             UnaryOp::Neg => -operand,
+            UnaryOp::Not => IntpControlFlow::Val(Value::Bool(!operand.is_truthy())),
         }
     }
 }

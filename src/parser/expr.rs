@@ -49,9 +49,16 @@ binary_parse!(parse_or < parse_and;
     }
 );
 
-binary_parse!(parse_and < parse_sum;
+binary_parse!(parse_and < parse_eq;
     ops {
         And => And,
+    }
+);
+
+binary_parse!(parse_eq < parse_sum;
+    ops {
+        EqualEqual => Eq,
+        BangEqual => NotEq,
     }
 );
 
@@ -74,6 +81,7 @@ fn parse_unary(parser: &mut Parser) -> Expr {
     let mut span = parser.span();
     let op = match parser.peek() {
         Minus => UnaryOp::Neg,
+        Bang => UnaryOp::Not,
         _ => {
             return parse_primary(parser);
         }

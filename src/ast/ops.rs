@@ -7,6 +7,8 @@ pub enum BinaryOp {
     Mul,
     Assign,
     Div,
+    Eq,
+    NotEq,
 
     Or,
     And,
@@ -22,6 +24,8 @@ impl Display for BinaryOp {
             BinaryOp::Div => "/",
             BinaryOp::Or => "or",
             BinaryOp::And => "and",
+            BinaryOp::Eq => "==",
+            BinaryOp::NotEq => "!=",
         })
     }
 }
@@ -29,12 +33,14 @@ impl Display for BinaryOp {
 #[derive(Debug, Clone, Copy)]
 pub enum UnaryOp {
     Neg,
+    Not,
 }
 
 impl Display for UnaryOp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             UnaryOp::Neg => "-",
+            UnaryOp::Not => "!",
         })
     }
 }
