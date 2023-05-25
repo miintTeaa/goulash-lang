@@ -1,6 +1,6 @@
 use crate::{
     ast::ops::{BinaryOp, UnaryOp},
-    int_ir::{IIRExpr, IIRExprData},
+    iir::{IIRExpr, IIRExprData},
     span::Span,
     value::Value,
 };

@@ -1,5 +1,5 @@
 use crate::{
-    int_ir::{IIRExpr, IIRStmt, IIRStmtData},
+    iir::{IIRExpr, IIRStmt, IIRStmtData},
     span::Span,
 };
 

@@ -6,7 +6,7 @@ use super::ops::{BinaryOp, UnaryOp};
 
 pub struct Expr {
     pub span: Span,
-    data: ExprData,
+    pub(crate) data: ExprData,
 }
 
 impl Expr {
@@ -14,7 +14,7 @@ impl Expr {
         Self { span, data }
     }
 
-    pub fn new_lit(value: ExprValue, span: Span) -> Self {
+    pub fn new_lit(value: ExprValueType, span: Span) -> Self {
         Self {
             span,
             data: ExprData::Lit(value),
@@ -58,13 +58,13 @@ impl Debug for Expr {
 pub enum ExprData {
     Op(BinaryOp, Box<Expr>, Box<Expr>),
     UnOp(UnaryOp, Box<Expr>),
-    Lit(ExprValue),
+    Lit(ExprValueType),
     Var,
     Error,
 }
 
 #[derive(Debug)]
-pub enum ExprValue {
+pub enum ExprValueType {
     Int,
     Float,
     Str,

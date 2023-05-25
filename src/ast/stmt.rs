@@ -1,21 +1,40 @@
 use std::fmt::Debug;
 
-use crate::span::Span;
+use crate::{span::Span};
 
 use super::expr::Expr;
 
 pub struct Stmt {
     pub span: Span,
-    data: StmtData,
+    pub(crate) data: StmtData,
 }
 
 impl Stmt {
-    pub fn new(data: StmtData, span: Span) -> Self {
-        Self { span, data }
+    pub fn new_print(expr: Expr, span: Span) -> Self {
+        Self {
+            span,
+            data: StmtData::Print(expr),
+        }
+    }
+
+    pub fn new_let(ident: Result<Span, Span>, rhs: Expr, span: Span) -> Self {
+        Self {
+            span,
+            data: StmtData::Let(ident, rhs),
+        }
     }
 
     pub fn data(&self) -> &StmtData {
         &self.data
+    }
+}
+
+impl From<Expr> for Stmt {
+    fn from(expr: Expr) -> Self {
+        Self {
+            span: expr.span,
+            data: StmtData::Expr(expr),
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 use goulash::{
-    int_ir::{builder::build, visitor::IIRStmtVisitor},
+    iir::{self, visitor::IIRStmtVisitor},
     interpreter::{Interpreter, IntpControlFlow},
     value::Value,
 };
@@ -17,7 +17,7 @@ fn main() {
     }
 
     let mut interpreter = Interpreter::new(src);
-    match build(src, stmts) {
+    match iir::build(src, stmts) {
         Ok(iir) => {
             for iir_stmt in &iir {
                 match interpreter.visit_stmt(iir_stmt) {

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprData, ExprValue,
+        Expr, ExprData, ExprValueType,
     },
     error::LangError,
     lexer::Token,
@@ -97,7 +97,7 @@ fn parse_primary(parser: &mut Parser) -> Expr {
         (lit $value:ident) => {{
             let span = parser.span();
             parser.next();
-            Expr::new_lit(ExprValue::$value, span)
+            Expr::new_lit(ExprValueType::$value, span)
         }};
         (data $data:ident) => {{
             let span = parser.span();

@@ -2,7 +2,7 @@ use crate::ast::ops::BinaryOp;
 use crate::ast::ops::UnaryOp;
 use crate::ast::Expr;
 use crate::ast::ExprData;
-use crate::ast::ExprValue;
+use crate::ast::ExprValueType;
 use crate::span::Span;
 
 pub trait ExprVisitor<T> {
@@ -18,7 +18,7 @@ pub trait ExprVisitor<T> {
 
     fn visit_error_expr(&mut self, span: Span) -> T;
     fn visit_var(&mut self, span: Span) -> T;
-    fn visit_literal(&mut self, kind: &ExprValue, span: Span) -> T;
+    fn visit_literal(&mut self, kind: &ExprValueType, span: Span) -> T;
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &Expr, span: Span) -> T;
     fn visit_binary_op(&mut self, op: BinaryOp, lhs: &Expr, rhs: &Expr, span: Span) -> T;
 }

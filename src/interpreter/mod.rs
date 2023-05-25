@@ -4,7 +4,7 @@ use scopes::ScopeStack;
 
 use crate::{
     ast::ops::{BinaryOp, UnaryOp},
-    int_ir::{
+    iir::{
         visitor::{IIRExprVisitor, IIRStmtVisitor},
         IIRExpr, IIRExprData,
     },
