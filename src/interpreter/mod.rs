@@ -5,7 +5,6 @@ use scopes::ScopeStack;
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprValue,
     },
     int_ir::{
         visitor::{IIRExprVisitor, IIRStmtVisitor},
@@ -45,12 +44,12 @@ pub enum IntpControlFlow {
 }
 
 impl<'src> IIRStmtVisitor<IntpControlFlow> for Interpreter<'src> {
-    fn visit_expr_stmt(&mut self, expr: &IIRExpr, span: Span) -> IntpControlFlow {
+    fn visit_expr_stmt(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         self.visit_expr(expr);
         IntpControlFlow::Val(Value::None)
     }
 
-    fn visit_print(&mut self, expr: &IIRExpr, span: Span) -> IntpControlFlow {
+    fn visit_print(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         match self.visit_expr(expr) {
             v @ IntpControlFlow::Ret(_) => v,
             IntpControlFlow::Val(val) => {
@@ -60,7 +59,7 @@ impl<'src> IIRStmtVisitor<IntpControlFlow> for Interpreter<'src> {
         }
     }
 
-    fn visit_let(&mut self, ident: Span, expr: &IIRExpr, span: Span) -> IntpControlFlow {
+    fn visit_let(&mut self, ident: Span, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         match self.visit_expr(expr) {
             v @ IntpControlFlow::Ret(_) => v,
             IntpControlFlow::Val(val) => {
@@ -79,7 +78,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         }
     }
 
-    fn visit_const(&mut self, val: &Value, span: Span) -> IntpControlFlow {
+    fn visit_const(&mut self, val: &Value, _span: Span) -> IntpControlFlow {
         IntpControlFlow::Val(val.clone())
     }
 
@@ -88,7 +87,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         op: BinaryOp,
         lhs: &IIRExpr,
         rhs: &IIRExpr,
-        span: Span,
+        _span: Span,
     ) -> IntpControlFlow {
         macro_rules! op {
             ($op_symbol:tt) => {{
@@ -127,7 +126,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         }
     }
 
-    fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, span: Span) -> IntpControlFlow {
+    fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, _span: Span) -> IntpControlFlow {
         let operand = get_or_ret!(self.visit_expr(operand));
         match op {
             UnaryOp::Neg => -operand,

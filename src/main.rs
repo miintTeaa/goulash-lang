@@ -1,8 +1,5 @@
 use goulash::{
-    int_ir::{
-        builder::{build, IIRBuilder},
-        visitor::IIRStmtVisitor,
-    },
+    int_ir::{builder::build, visitor::IIRStmtVisitor},
     interpreter::{Interpreter, IntpControlFlow},
     value::Value,
 };

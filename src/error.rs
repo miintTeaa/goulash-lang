@@ -70,7 +70,7 @@ impl LangError {
 }
 
 impl From<ParseIntError> for LangErrorBuilder {
-    fn from(value: ParseIntError) -> Self {
+    fn from(_value: ParseIntError) -> Self {
         LangErrorBuilder::new_syntax().with_msg("bad integer")
     }
 }
