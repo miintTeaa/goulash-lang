@@ -7,10 +7,9 @@ use crate::{
 };
 
 pub fn parse_stmt(parser: &mut Parser) {
-    use Token::*;
     match parser.peek() {
-        Let => let_stmt_expect_let(parser),
-        Print => {
+        Token::Let => let_stmt_expect_let(parser),
+        Token::Print => {
             let mut span = parser.span();
             parser.next();
             let expr = parse_expr(parser);

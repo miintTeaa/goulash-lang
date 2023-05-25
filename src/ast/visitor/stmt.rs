@@ -5,12 +5,11 @@ use crate::{
 
 pub trait StmtVisitor<T> {
     fn visit_stmt(&mut self, stmt: &Stmt) -> T {
-        use StmtData::*;
         match stmt.data() {
-            Let(ident, expr) => self.visit_let(*ident, expr, stmt.span),
-            Expr(expr) => self.visit_expr_stmt(expr, stmt.span),
-            Print(expr) => self.visit_print(expr, stmt.span),
-            Error => self.visit_error_stmt(stmt.span),
+            StmtData::Let(ident, expr) => self.visit_let(*ident, expr, stmt.span),
+            StmtData::Expr(expr) => self.visit_expr_stmt(expr, stmt.span),
+            StmtData::Print(expr) => self.visit_print(expr, stmt.span),
+            StmtData::Error => self.visit_error_stmt(stmt.span),
         }
     }
 

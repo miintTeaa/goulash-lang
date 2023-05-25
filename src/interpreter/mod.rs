@@ -94,23 +94,22 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 lhs $op_symbol rhs
             }};
         }
-        use BinaryOp::*;
         match op {
-            Add => op!(+),
-            Sub => op!(-),
-            Mul => op!(*),
-            Div => op!(/),
-            Eq => {
+            BinaryOp::Add => op!(+),
+            BinaryOp::Sub => op!(-),
+            BinaryOp::Mul => op!(*),
+            BinaryOp::Div => op!(/),
+            BinaryOp::Eq => {
                 let lhs = get_or_ret!(self.visit_expr(lhs));
                 let rhs = get_or_ret!(self.visit_expr(rhs));
                 IntpControlFlow::Val(Value::Bool(lhs == rhs))
             }
-            NotEq => {
+            BinaryOp::NotEq => {
                 let lhs = get_or_ret!(self.visit_expr(lhs));
                 let rhs = get_or_ret!(self.visit_expr(rhs));
                 IntpControlFlow::Val(Value::Bool(lhs != rhs))
             }
-            Assign => match lhs.data() {
+            BinaryOp::Assign => match lhs.data() {
                 IIRExprData::Var => {
                     let rhs = get_or_ret!(self.visit_expr(rhs));
                     let ident = &self.src[lhs.span.range()];
@@ -131,11 +130,11 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 }
                 _ => IntpControlFlow::Ret(Value::None),
             },
-            Or => IntpControlFlow::Val(Value::Bool(
+            BinaryOp::Or => IntpControlFlow::Val(Value::Bool(
                 get_or_ret!(self.visit_expr(lhs)).is_truthy()
                     || get_or_ret!(self.visit_expr(rhs)).is_truthy(),
             )),
-            And => IntpControlFlow::Val(Value::Bool(
+            BinaryOp::And => IntpControlFlow::Val(Value::Bool(
                 get_or_ret!(self.visit_expr(lhs)).is_truthy()
                     && get_or_ret!(self.visit_expr(rhs)).is_truthy(),
             )),

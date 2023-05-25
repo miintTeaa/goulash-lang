@@ -77,11 +77,10 @@ binary_parse!(parse_mul < parse_unary;
 );
 
 fn parse_unary(parser: &mut Parser) -> Expr {
-    use Token::*;
     let mut span = parser.span();
     let op = match parser.peek() {
-        Minus => UnaryOp::Neg,
-        Bang => UnaryOp::Not,
+        Token::Minus => UnaryOp::Neg,
+        Token::Bang => UnaryOp::Not,
         _ => {
             return parse_primary(parser);
         }

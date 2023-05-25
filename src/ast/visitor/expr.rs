@@ -7,13 +7,12 @@ use crate::span::Span;
 
 pub trait ExprVisitor<T> {
     fn visit_expr(&mut self, expr: &Expr) -> T {
-        use ExprData::*;
         match expr.data() {
-            Op(op, lhs, rhs) => self.visit_binary_op(*op, lhs, rhs, expr.span),
-            UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
-            Lit(kind) => self.visit_literal(kind, expr.span),
-            Var => self.visit_var(expr.span),
-            Error => self.visit_error_expr(expr.span),
+            ExprData::Op(op, lhs, rhs) => self.visit_binary_op(*op, lhs, rhs, expr.span),
+            ExprData::UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
+            ExprData::Lit(kind) => self.visit_literal(kind, expr.span),
+            ExprData::Var => self.visit_var(expr.span),
+            ExprData::Error => self.visit_error_expr(expr.span),
         }
     }
 

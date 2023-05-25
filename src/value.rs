@@ -155,16 +155,15 @@ impl PartialEq for Value {
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Value::*;
         match self {
-            Int(i) => write!(f, "{i}"),
-            Float(fl) => write!(f, "{fl}"),
-            Str(s) => write!(f, "{s}"),
-            Bool(b) => write!(f, "{b}"),
-            Fn(_) => todo!(),
-            Class(_) => todo!(),
-            Obj(_) => todo!(),
-            None => write!(f, "None"),
+            Value::Int(i) => write!(f, "{i}"),
+            Value::Float(fl) => write!(f, "{fl}"),
+            Value::Str(s) => write!(f, "{s}"),
+            Value::Bool(b) => write!(f, "{b}"),
+            Value::Fn(_) => todo!(),
+            Value::Class(_) => todo!(),
+            Value::Obj(_) => todo!(),
+            Value::None => write!(f, "None"),
         }
     }
 }

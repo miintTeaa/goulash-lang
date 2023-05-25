@@ -7,12 +7,11 @@ use crate::{
 
 pub trait IIRExprVisitor<T> {
     fn visit_expr(&mut self, expr: &IIRExpr) -> T {
-        use IIRExprData::*;
         match expr.data() {
-            Op(op, lhs, rhs) => self.visit_binary_op(*op, lhs, rhs, expr.span),
-            UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
-            Const(val) => self.visit_const(val, expr.span),
-            Var => self.visit_var(expr.span),
+            IIRExprData::Op(op, lhs, rhs) => self.visit_binary_op(*op, lhs, rhs, expr.span),
+            IIRExprData::UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
+            IIRExprData::Const(val) => self.visit_const(val, expr.span),
+            IIRExprData::Var => self.visit_var(expr.span),
         }
     }
 
