@@ -94,14 +94,27 @@ fn parse_unary(parser: &mut Parser) -> Expr {
 
 fn parse_primary(parser: &mut Parser) -> Expr {
     use Token::*;
+    macro_rules! m {
+        (lit $value:ident) => {{
+            let span = parser.span();
+            parser.next();
+            Expr::new_lit(ExprValue::$value, span)
+        }};
+        (data $data:ident) => {{
+            let span = parser.span();
+            parser.next();
+            Expr::new(ExprData::$data, span)
+        }};
+    }
+
     let expr = match parser.peek() {
-        Integer => Expr::new_lit(ExprValue::Int, parser.span()),
-        True => Expr::new_lit(ExprValue::True, parser.span()),
-        False => Expr::new_lit(ExprValue::False, parser.span()),
-        Ident => Expr::new(ExprData::Var, parser.span()),
-        Float => Expr::new_lit(ExprValue::Float, parser.span()),
-        String => Expr::new_lit(ExprValue::Str, parser.span()),
-        None => Expr::new_lit(ExprValue::None, parser.span()),
+        Integer => m!(lit Int),
+        True => m!(lit True),
+        False => m!(lit False),
+        Ident => m!(data Var),
+        Float => m!(lit Float),
+        String => m!(lit Str),
+        None => m!(lit None),
         LParen => {
             let mut span = parser.span();
             parser.next();
@@ -116,13 +129,14 @@ fn parse_primary(parser: &mut Parser) -> Expr {
         }
 
         tk => {
+            let span = parser.span();
+            parser.next();
             parser.report(LangError::new_syntax(
                 format!("expected value, got {tk}"),
-                parser.span(),
+                span,
             ));
-            Expr::new(ExprData::Error, parser.span())
+            Expr::new(ExprData::Error, span)
         }
     };
-    parser.next();
     expr
 }
