@@ -5,7 +5,7 @@ use goulash::{
 };
 
 fn main() {
-    let src = String::from(r#"let x = 1; x = None; print x + 1;"#);
+    let src = String::from(r#"let x = 2; x = true and 1 + 1; print x_bool;"#);
     let src = &src;
     let (errors, stmts) = goulash::parse(src);
 

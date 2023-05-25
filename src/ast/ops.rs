@@ -7,6 +7,9 @@ pub enum BinaryOp {
     Mul,
     Assign,
     Div,
+
+    Or,
+    And,
 }
 
 impl Display for BinaryOp {
@@ -17,6 +20,8 @@ impl Display for BinaryOp {
             BinaryOp::Mul => "*",
             BinaryOp::Assign => "=",
             BinaryOp::Div => "/",
+            BinaryOp::Or => "or",
+            BinaryOp::And => "and",
         })
     }
 }

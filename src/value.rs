@@ -60,6 +60,26 @@ impl Value {
             Value::None => Type::None,
         }
     }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Bool(b) => *b,
+            Value::Int(i) => *i != 0,
+            Value::Float(f) => *f != 0.0,
+            Value::Str(s) => match &*s.to_ascii_lowercase() {
+                // this is so dumb lol
+                "true" => true,
+                "false" => false,
+                "yes" => true,
+                "no" => false,
+                "y" => true,
+                "n" => false,
+                _ => true,
+            },
+            Value::None => false,
+            _ => true,
+        }
+    }
 }
 
 macro_rules! impl_op {

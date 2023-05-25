@@ -3,9 +3,7 @@ mod scopes;
 use scopes::ScopeStack;
 
 use crate::{
-    ast::{
-        ops::{BinaryOp, UnaryOp},
-    },
+    ast::ops::{BinaryOp, UnaryOp},
     int_ir::{
         visitor::{IIRExprVisitor, IIRStmtVisitor},
         IIRExpr, IIRExprData,
@@ -93,7 +91,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             ($op_symbol:tt) => {{
                 let lhs = get_or_ret!(self.visit_expr(lhs));
                 let rhs = get_or_ret!(self.visit_expr(rhs));
-                lhs + rhs
+                lhs $op_symbol rhs
             }};
         }
         use BinaryOp::*;
@@ -123,6 +121,14 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 }
                 _ => IntpControlFlow::Ret(Value::None),
             },
+            Or => IntpControlFlow::Val(Value::Bool(
+                get_or_ret!(self.visit_expr(lhs)).is_truthy()
+                    || get_or_ret!(self.visit_expr(rhs)).is_truthy(),
+            )),
+            And => IntpControlFlow::Val(Value::Bool(
+                get_or_ret!(self.visit_expr(lhs)).is_truthy()
+                    && get_or_ret!(self.visit_expr(rhs)).is_truthy(),
+            )),
         }
     }
 

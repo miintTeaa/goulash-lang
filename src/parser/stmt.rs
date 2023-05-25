@@ -1,4 +1,4 @@
-use super::{expr::parse_sum, parser::Parser};
+use super::{expr::parse_or, parser::Parser};
 use crate::{
     ast::{ExprData, Stmt, StmtData},
     error::LangError,
@@ -14,6 +14,7 @@ pub fn parse_stmt(parser: &mut Parser) {
             let mut span = parser.span();
             parser.next();
             let expr = parse_expr(parser);
+            println!("EXPR {expr:?}");
             span.set_end(expr.span.end());
             parser.push_stmt(Stmt::new(StmtData::Print(expr), span))
         }
@@ -31,7 +32,7 @@ pub fn let_stmt_expect_let(parser: &mut Parser) {
 
     // lhs
     parser.disable_reporting();
-    let lhs = parse_sum(parser);
+    let lhs = parse_or(parser);
     parser.enable_reporting();
     let lhs_span = if !matches!(lhs.data(), ExprData::Var) {
         parser.report(LangError::new_syntax(

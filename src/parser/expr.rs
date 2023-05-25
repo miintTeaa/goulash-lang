@@ -37,9 +37,21 @@ macro_rules! binary_parse {
     };
 }
 
-binary_parse!(parse_assign < parse_sum;
+binary_parse!(parse_assign < parse_or;
     ops {
         Equal => Assign,
+    }
+);
+
+binary_parse!(parse_or < parse_and;
+    ops {
+        Or => Or,
+    }
+);
+
+binary_parse!(parse_and < parse_sum;
+    ops {
+        And => And,
     }
 );
 
