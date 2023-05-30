@@ -9,13 +9,6 @@ use crate::{
 pub fn parse_stmt(parser: &mut Parser) {
     match parser.peek() {
         Token::Let => let_stmt_expect_let(parser),
-        Token::Print => {
-            let mut span = parser.span();
-            parser.next();
-            let expr = parse_expr(parser);
-            span.set_end(expr.span.end());
-            parser.push_stmt(Stmt::new_print(expr, span))
-        }
         _ => {
             let expr = parse_expr(parser);
             let _span = expr.span;

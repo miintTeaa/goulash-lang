@@ -15,7 +15,6 @@ pub enum Token {
     True,
     False,
     Else,
-    Print,
     None,
 
     // Symbols
@@ -61,7 +60,6 @@ impl Display for Token {
             Or => "'or'",
             And => "'and'",
             Else => "'else'",
-            Print => "'print'",
             None => "'None'",
             LCurly => "'{'",
             RCurly => "'}'",

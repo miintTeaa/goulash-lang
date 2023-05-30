@@ -10,13 +10,6 @@ pub struct Stmt {
 }
 
 impl Stmt {
-    pub fn new_print(expr: Expr, span: Span) -> Self {
-        Self {
-            span,
-            data: StmtData::Print(expr),
-        }
-    }
-
     pub fn new_let(ident: Result<Span, Span>, rhs: Expr, span: Span) -> Self {
         Self {
             span,
@@ -58,13 +51,6 @@ impl Debug for Stmt {
             StmtData::Error => {
                 write!(f, "Stmt:ERROR")
             }
-            StmtData::Print(expr) => {
-                if f.alternate() {
-                    write!(f, "Stmt:PRINT:{expr:#?}")
-                } else {
-                    write!(f, "Stmt:PRINT:{expr:?}")
-                }
-            }
         }
     }
 }
@@ -73,6 +59,5 @@ impl Debug for Stmt {
 pub enum StmtData {
     Let(Result<Span, Span>, Expr),
     Expr(Expr),
-    Print(Expr),
     Error,
 }

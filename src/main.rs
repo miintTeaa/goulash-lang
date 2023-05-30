@@ -7,21 +7,21 @@ use goulash::{
 fn main() {
     let src = String::from(
         r#"
-    print "Expected output: Test, 10, 1, 2, 3, 20";
+    print("Expected output: Test, 10, 1, 2, 3, 20");
     let x = 2;
-    print {
+    print ({
         x = "Test";
-        print x_str;
+        print (x_str);
         10
-    };
-    print {
+    });
+    print (
         fn a, b, c {
-            print a;
-            print b;
-            print c;
+            print (a);
+            print (b);
+            print (c);
             20
         } (1, 2, 3)
-    };
+    );
     "#,
     );
     let src = &src;

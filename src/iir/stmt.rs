@@ -24,7 +24,6 @@ impl IIRStmt {
                     IIRStmtData::Let(ident, IIRExpr::try_from(expr, src)?)
                 }
                 StmtData::Expr(expr) => IIRStmtData::Expr(IIRExpr::try_from(expr, src)?),
-                StmtData::Print(expr) => IIRStmtData::Print(IIRExpr::try_from(expr, src)?),
                 StmtData::Error => panic!("tried to convert StmtData::Error to IIRStmtData"),
             },
         })
@@ -41,13 +40,6 @@ impl IIRStmt {
         }
     }
 
-    pub fn new_print(expr: IIRExpr, span: Span) -> Self {
-        Self {
-            span,
-            data: IIRStmtData::Print(expr),
-        }
-    }
-
     pub fn data(&self) -> &IIRStmtData {
         &self.data
     }
@@ -56,5 +48,4 @@ impl IIRStmt {
 pub enum IIRStmtData {
     Let(Span, IIRExpr),
     Expr(IIRExpr),
-    Print(IIRExpr),
 }

@@ -109,7 +109,7 @@ fn parse_call(parser: &mut Parser) -> Expr {
             continue;
         }
 
-        loop {
+        'args: loop {
             let arg = parse_expr(parser);
             args.push(arg);
 
@@ -123,7 +123,30 @@ fn parse_call(parser: &mut Parser) -> Expr {
                     break;
                 }
                 (true, Err(_)) => {}
-                (false, Err(_)) => todo!("recovery in function call args"),
+                (false, Err(_)) => loop {
+                    match (
+                        parser.consume(Token::Comma),
+                        parser.try_consume(Token::RParen),
+                    ) {
+                        (_, Ok(rparen_span)) => {
+                            span.set_end(rparen_span.end());
+                            expr = Expr::new(ExprData::Call(Box::new(expr), args), span);
+                            break 'args;
+                        }
+                        (true, Err(_)) => {
+                            parser.next();
+                            break;
+                        }
+                        _ => {
+                            if parser.peek() == Token::EOF {
+                                span.set_end(parser.span().end());
+                                expr = Expr::new(ExprData::Call(Box::new(expr), args), span);
+                                break 'args;
+                            }
+                            parser.next();
+                        }
+                    }
+                },
             }
         }
     }

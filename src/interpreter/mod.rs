@@ -1,5 +1,7 @@
 mod scopes;
 
+use std::rc::Rc;
+
 use scopes::ScopeStack;
 
 use crate::{
@@ -10,7 +12,7 @@ use crate::{
     },
     span::Span,
     types::Type,
-    value::Value,
+    value::{FunctionData, Value},
 };
 
 pub struct Interpreter<'src> {
@@ -20,10 +22,26 @@ pub struct Interpreter<'src> {
 
 impl<'src> Interpreter<'src> {
     pub fn new(src: &'src str) -> Self {
-        Self {
+        let mut interpreter = Self {
             scopes: ScopeStack::new(),
             src,
-        }
+        };
+
+        interpreter.scopes.declare(
+            "print".to_owned(),
+            Value::Fn(Rc::new(FunctionData::new_raw(
+                vec!["printed".to_owned()],
+                Box::new(|interpreter: &mut Interpreter| {
+                    println!(
+                        "{}",
+                        interpreter.scopes.find("printed").expect("should exist")
+                    );
+                    Value::None
+                }),
+            ))),
+        );
+
+        interpreter
     }
 
     pub fn scopes(&self) -> &ScopeStack<Value> {
@@ -53,11 +71,6 @@ pub enum IntpControlFlow {
 impl<'src> IIRStmtVisitor<IntpControlFlow> for Interpreter<'src> {
     fn visit_expr_stmt(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         get_or_ret!(self, expr);
-        IntpControlFlow::Val(Value::None)
-    }
-
-    fn visit_print(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
-        println!("{}", get_or_ret!(self, expr));
         IntpControlFlow::Val(Value::None)
     }
 

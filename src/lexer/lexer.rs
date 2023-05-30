@@ -16,13 +16,13 @@ mod test {
         use Token::*;
 
         let (tokens, errors) =
-            Lexer::new("if while break return for fn let or and true false print let2 fn2 foo bar")
+            Lexer::new("if while break return for fn let or and true false let2 fn2 foo bar")
                 .process_all();
         assert_eq!(
             &tokens.iter().map(|t| t.0).collect::<Vec<_>>(),
             &[
-                If, While, Break, Return, For, Fn, Let, Or, And, True, False, Print, Ident, Ident,
-                Ident, Ident, EOF
+                If, While, Break, Return, For, Fn, Let, Or, And, True, False, Ident, Ident, Ident,
+                Ident, EOF
             ]
         );
         assert_eq!(
@@ -39,12 +39,11 @@ mod test {
                 36..39,
                 40..44,
                 45..50,
-                51..56,
-                57..61,
-                62..65,
-                66..69,
-                70..73,
-                73..73
+                51..55,
+                56..59,
+                60..63,
+                64..67,
+                67..67
             ]
         );
         assert!(errors.is_empty(), "Errors should be empty: {errors:#?}");
@@ -316,7 +315,6 @@ lex_branch!(lex_kw; default: Token::Ident;
     'a' => all!("nd": Token::And),
     't' => all!("rue": Token::True),
     'e' => all!("lse": Token::Else),
-    'p' => all!("rint": Token::Print),
     'N' => all!("one": Token::None),
     'f' in lex_kw_f,
 );
