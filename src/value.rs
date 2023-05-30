@@ -6,18 +6,66 @@ use std::{
     rc::Rc,
 };
 
-use crate::{interpreter::IntpControlFlow, types::Type};
+use crate::{
+    iir::{
+        visitor::{IIRExprVisitor, IIRStmtVisitor},
+        IIRExpr, IIRStmt,
+    },
+    interpreter::{Interpreter, IntpControlFlow},
+    types::Type,
+};
 
 #[derive(Debug)]
 pub struct ClassData {
     funcs: HashMap<String, Rc<FunctionData>>,
 }
 
-pub type FunctionSignature = Box<dyn Fn()>;
+pub type FunctionSignature = Box<dyn Fn(&mut Interpreter) -> Value>;
 
 pub struct FunctionData {
     args: Vec<String>,
     callback: FunctionSignature,
+}
+
+impl FunctionData {
+    pub fn new(args: Vec<String>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
+        let callback = Box::new(move |interpreter: &mut Interpreter| {
+            for stmt in &stmts {
+                match interpreter.visit_stmt(stmt) {
+                    IntpControlFlow::Ret(v) => return v,
+                    IntpControlFlow::Val(_) => (),
+                }
+            }
+            if let Some(expr) = ending_expr.as_ref() {
+                match interpreter.visit_expr(expr) {
+                    IntpControlFlow::Ret(v) | IntpControlFlow::Val(v) => return v,
+                }
+            }
+            Value::None
+        });
+        Self { args, callback }
+    }
+
+    pub fn new_raw(args: Vec<String>, callback: FunctionSignature) -> Self {
+        Self { args, callback }
+    }
+
+    pub fn call(&self, arg_values: Vec<Value>, interpreter: &mut Interpreter) -> IntpControlFlow {
+        if arg_values.len() != self.args.len() {
+            return IntpControlFlow::Ret(Value::None);
+        }
+        interpreter.scopes_mut().push_scope();
+        let mut i = 0;
+        for arg_value in arg_values {
+            interpreter
+                .scopes_mut()
+                .declare(self.args[i].clone(), arg_value);
+            i += 1;
+        }
+        let ret = (self.callback)(interpreter);
+        interpreter.scopes_mut().pop_scope();
+        IntpControlFlow::Val(ret)
+    }
 }
 
 impl Debug for FunctionData {

@@ -15,6 +15,7 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::Block(stmts, last_expr) => {
                 self.visit_block(stmts, last_expr.as_deref(), expr.span)
             }
+            IIRExprData::Call(expr, args) => self.visit_call(expr, args, expr.span),
         }
     }
 
@@ -23,4 +24,5 @@ pub trait IIRExprVisitor<T> {
     fn visit_binary_op(&mut self, op: BinaryOp, lhs: &IIRExpr, rhs: &IIRExpr, span: Span) -> T;
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, span: Span) -> T;
     fn visit_block(&mut self, stmts: &[IIRStmt], expr: Option<&IIRExpr>, span: Span) -> T;
+    fn visit_call(&mut self, expr: &IIRExpr, args: &[IIRExpr], span: Span) -> T;
 }

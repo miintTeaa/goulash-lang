@@ -59,6 +59,19 @@ impl Debug for Expr {
                 .field(&stmts)
                 .field(&expr)
                 .finish(),
+            ExprData::Fn(args, stmts, expr) => f
+                .debug_tuple(&format!("Expr:FN"))
+                .field(&span)
+                .field(&args)
+                .field(&stmts)
+                .field(&expr)
+                .finish(),
+            ExprData::Call(callable, args) => f
+                .debug_tuple(&format!("Expr:CALL"))
+                .field(&span)
+                .field(&callable)
+                .field(&args)
+                .finish(),
         }
     }
 }
@@ -67,8 +80,10 @@ impl Debug for Expr {
 pub enum ExprData {
     Op(BinaryOp, Box<Expr>, Box<Expr>),
     UnOp(UnaryOp, Box<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     Lit(ExprValueType),
     Block(Vec<Stmt>, Option<Box<Expr>>),
+    Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
     Var,
     Error,
 }

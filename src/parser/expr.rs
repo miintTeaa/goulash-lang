@@ -1,17 +1,18 @@
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprData, ExprValueType, StmtData,
+        Expr, ExprData, ExprValueType, Stmt, StmtData,
     },
     error::LangError,
     lexer::Token,
     span::Span,
 };
 
-use super::{parser::Parser, stmt::parse_stmt};
+use super::{parse_delimited, parser::Parser, stmt::parse_stmt};
 
 pub fn parse_expr(parser: &mut Parser) -> Expr {
-    parse_assign(parser)
+    let expr = parse_assign(parser);
+    expr
 }
 
 macro_rules! binary_parse {
@@ -83,13 +84,50 @@ fn parse_unary(parser: &mut Parser) -> Expr {
         Token::Minus => UnaryOp::Neg,
         Token::Bang => UnaryOp::Not,
         _ => {
-            return parse_primary(parser);
+            return parse_call(parser);
         }
     };
     parser.next();
     let expr = parse_unary(parser);
     span.set_end(expr.span.end());
     Expr::new(ExprData::UnOp(op, Box::new(expr)), span)
+}
+
+fn parse_call(parser: &mut Parser) -> Expr {
+    let mut expr = parse_primary(parser);
+    let mut span = expr.span;
+    loop {
+        if !parser.consume(Token::LParen) {
+            break;
+        }
+
+        let mut args = Vec::new();
+
+        if let Ok(rparen_span) = parser.try_consume(Token::RParen) {
+            span.set_end(rparen_span.end());
+            expr = Expr::new(ExprData::Call(Box::new(expr), args), span);
+            continue;
+        }
+
+        loop {
+            let arg = parse_expr(parser);
+            args.push(arg);
+
+            match (
+                parser.consume(Token::Comma),
+                parser.try_consume(Token::RParen),
+            ) {
+                (_, Ok(rparen_span)) => {
+                    span.set_end(rparen_span.end());
+                    expr = Expr::new(ExprData::Call(Box::new(expr), args), span);
+                    break;
+                }
+                (true, Err(_)) => {}
+                (false, Err(_)) => todo!("recovery in function call args"),
+            }
+        }
+    }
+    expr
 }
 
 fn parse_primary(parser: &mut Parser) -> Expr {
@@ -127,7 +165,8 @@ fn parse_primary(parser: &mut Parser) -> Expr {
             expr.span = span;
             expr
         }
-        LCurly => block_assume_lcurly(parser),
+        LCurly => parse_block(parser),
+        Fn => parse_fn(parser),
 
         tk => {
             let span = parser.span();
@@ -142,72 +181,102 @@ fn parse_primary(parser: &mut Parser) -> Expr {
     expr
 }
 
-fn block_assume_lcurly(parser: &mut Parser) -> Expr {
-    let mut span = parser.span();
-    parser.next();
+fn parse_block_data(parser: &mut Parser) -> (Vec<Stmt>, Option<Box<Expr>>, Span) {
+    match parse_delimited(
+        parser,
+        Token::LCurly,
+        Token::RCurly,
+        Token::Semicolon,
+        |parser| {
+            parse_stmt(parser);
+            parser.pop_stmt().expect("should have parsed a stmt")
+        },
+    ) {
+        (stmts, true, span) => (stmts, None, span),
+        (mut stmts, false, span) => {
+            let expr = match stmts.pop() {
+                Some(stmt) if matches!(stmt.data, StmtData::Error) => {
+                    Some(Box::new(Expr::new(ExprData::Error, stmt.span)))
+                }
+                Some(stmt) if matches!(stmt.data, StmtData::Expr(_)) => {
+                    let StmtData::Expr(expr) = stmt.data else {
+                        unreachable!();
+                    };
+                    Some(Box::new(expr))
+                }
+                Some(stmt) => {
+                    stmts.push(stmt);
+                    None
+                }
+                None => None,
+            };
+            (stmts, expr, span)
+        }
+    }
+}
 
-    let mut stmts = Vec::new();
-    let mut expr = None::<Box<Expr>>;
+fn parse_block(parser: &mut Parser) -> Expr {
+    let (stmts, expr, span) = parse_block_data(parser);
+    Expr::new(ExprData::Block(stmts, expr), span)
+}
 
-    if matches!(parser.peek(), Token::RParen) {
-        span.set_end(parser.span().end());
-        parser.next();
-        return Expr::new(ExprData::Block(stmts, expr), span);
+fn parse_fn(parser: &mut Parser) -> Expr {
+    let mut span = match parser.try_consume(Token::Fn) {
+        Ok(span) => span,
+        Err(e) => {
+            let mut span = e.span();
+            parser.report(e);
+            recover_to!(parser; after { Token::RCurly });
+            span.set_end(parser.span().end());
+            return Expr::new(ExprData::Error, span);
+        }
     };
 
-    loop {
-        parse_stmt(parser);
-        let stmt = parser.pop_stmt().expect("should have parsed a statement");
-        match (
-            parser.consume(Token::Semicolon),
-            parser.try_consume(Token::RCurly),
-        ) {
-            (true, Ok(rcurly_span)) => {
-                stmts.push(stmt);
-                span.set_end(rcurly_span.end());
-                break;
-            }
-            (false, Ok(rcurly_span)) => {
-                span.set_end(rcurly_span.end());
-                match stmt.data {
-                    StmtData::Expr(inner_expr) => {
-                        expr = Some(Box::new(inner_expr));
-                    }
-                    _ => {
-                        stmts.push(stmt);
-                    }
+    let args = 'args: {
+        if parser.peek() == Token::RCurly {
+            break 'args Vec::new();
+        };
+
+        let mut args = Vec::new();
+
+        loop {
+            let item = (|parser| parse_expr(parser).span)(parser);
+            args.push(item);
+
+            match (parser.consume(Token::Comma), parser.peek()) {
+                (_, Token::LCurly) => {
+                    break 'args args;
                 }
-                break;
-            }
-            (true, Err(_)) => {
-                stmts.push(stmt);
-            }
-            (false, Err(_)) => {
-                let err_span = Span::from(parser.span().end()..parser.span().end());
-                stmts.push(stmt);
-                parser.report(LangError::new_syntax(
-                    "expected semicolon or closing brace",
-                    err_span,
-                ));
-                loop {
-                    match parser.peek() {
-                        Token::Let | Token::EOF => break,
-                        Token::Semicolon => {
-                            parser.next();
-                            break;
-                        }
-                        Token::RCurly => {
-                            span.set_end(parser.span().end());
-                            parser.next();
-                            return Expr::new(ExprData::Block(stmts, expr), span);
-                        }
-                        _ => {
-                            parser.next();
+                (true, _) => {}
+                (false, _) => {
+                    parser.report(LangError::new_syntax(
+                        format!("expected lcurly or comma, got {}", parser.peek()),
+                        parser.span(),
+                    ));
+                    loop {
+                        match (parser.consume(Token::Comma), parser.peek()) {
+                            (_, Token::LCurly) => {
+                                break 'args args;
+                            }
+                            (true, _) => {
+                                break;
+                            }
+                            _ => {
+                                if parser.peek() == Token::EOF {
+                                    span.set_end(parser.span().end());
+                                    return Expr::new(ExprData::Error, span);
+                                }
+                                parser.next();
+                            }
                         }
                     }
                 }
             }
         }
-    }
-    Expr::new(ExprData::Block(stmts, expr), span)
+    };
+
+    let (stmts, expr, block_span) = parse_block_data(parser);
+    span.set_end(block_span.end());
+
+    Expr::new(ExprData::Fn(args, stmts, expr), span)
 }

@@ -13,7 +13,6 @@ pub fn parse_stmt(parser: &mut Parser) {
             let mut span = parser.span();
             parser.next();
             let expr = parse_expr(parser);
-            println!("EXPR {expr:?}");
             span.set_end(expr.span.end());
             parser.push_stmt(Stmt::new_print(expr, span))
         }

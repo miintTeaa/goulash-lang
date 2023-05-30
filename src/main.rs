@@ -7,17 +7,25 @@ use goulash::{
 fn main() {
     let src = String::from(
         r#"
+    print "Expected output: Test, 10, 1, 2, 3, 20";
     let x = 2;
-    {
-        print x;
-        x = "test";
-        let y = 2;
+    print {
+        x = "Test";
+        print x_str;
+        10
     };
-    print x_str;
-    print y;
+    print {
+        fn a, b, c {
+            print a;
+            print b;
+            print c;
+            20
+        } (1, 2, 3)
+    };
     "#,
     );
     let src = &src;
+
     let (errors, stmts) = goulash::parse(src);
 
     if !errors.is_empty() {

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{span::Span};
+use crate::span::Span;
 
 use super::expr::Expr;
 

@@ -25,6 +25,14 @@ impl<'src> Interpreter<'src> {
             src,
         }
     }
+
+    pub fn scopes(&self) -> &ScopeStack<Value> {
+        &self.scopes
+    }
+
+    pub fn scopes_mut(&mut self) -> &mut ScopeStack<Value> {
+        &mut self.scopes
+    }
 }
 
 macro_rules! get_or_ret {
@@ -36,6 +44,7 @@ macro_rules! get_or_ret {
     };
 }
 
+#[derive(Debug)]
 pub enum IntpControlFlow {
     Ret(Value),
     Val(Value),
@@ -159,5 +168,18 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         };
         self.scopes.pop_scope();
         cflw
+    }
+
+    fn visit_call(&mut self, expr: &IIRExpr, args: &[IIRExpr], _span: Span) -> IntpControlFlow {
+        match get_or_ret!(self, expr) {
+            Value::Fn(func_data) => {
+                let mut arg_values = Vec::new();
+                for arg in args {
+                    arg_values.push(get_or_ret!(self, arg));
+                }
+                func_data.call(arg_values, self)
+            }
+            _ => return IntpControlFlow::Ret(Value::None),
+        }
     }
 }

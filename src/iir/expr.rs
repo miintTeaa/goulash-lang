@@ -7,7 +7,7 @@ use crate::{
     },
     error::LangError,
     span::Span,
-    value::Value,
+    value::{FunctionData, Value},
 };
 
 use super::IIRStmt;
@@ -63,6 +63,30 @@ impl IIRExpr {
                     };
                     IIRExprData::Block(stmts, expr)
                 }
+                ExprData::Fn(args, stmts, expr) => {
+                    let mut iir_stmts = Vec::new();
+                    for stmt in stmts {
+                        iir_stmts.push(IIRStmt::try_from(stmt, src)?);
+                    }
+                    let iir_expr = match expr {
+                        Some(expr) => Some(IIRExpr::try_from(*expr, src)?),
+                        None => None,
+                    };
+                    IIRExprData::Const(Value::Fn(Rc::new(FunctionData::new(
+                        args.into_iter()
+                            .map(|span| src[span.range()].to_owned())
+                            .collect(),
+                        iir_stmts,
+                        iir_expr,
+                    ))))
+                }
+                ExprData::Call(callable, args) => {
+                    let mut iir_args = Vec::new();
+                    for arg in args {
+                        iir_args.push(IIRExpr::try_from(arg, src)?);
+                    }
+                    IIRExprData::Call(Box::new(IIRExpr::try_from(*callable, src)?), iir_args)
+                }
             },
         })
     }
@@ -90,6 +114,7 @@ pub enum IIRExprData {
     Op(BinaryOp, Box<IIRExpr>, Box<IIRExpr>),
     UnOp(UnaryOp, Box<IIRExpr>),
     Block(Vec<IIRStmt>, Option<Box<IIRExpr>>),
+    Call(Box<IIRExpr>, Vec<IIRExpr>),
     Const(Value),
     Var,
 }
