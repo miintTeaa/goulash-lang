@@ -102,7 +102,7 @@ impl Value {
             Value::Float(_) => Type::Float,
             Value::Str(_) => Type::Str,
             Value::Bool(_) => Type::Bool,
-            Value::Fn(_) => todo!(),
+            Value::Fn(_) => Type::Fn,
             Value::Class(_) => todo!(),
             Value::Obj(_) => todo!(),
             Value::None => Type::None,

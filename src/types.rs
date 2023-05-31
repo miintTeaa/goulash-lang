@@ -6,8 +6,9 @@ pub enum Type {
     Float,
     Str,
     Bool,
+    Fn,
     None,
-    // todo!(Fn, Class, Obj)
+    // todo!(Class, Obj)
 }
 
 impl Display for Type {
@@ -18,6 +19,7 @@ impl Display for Type {
             Type::Str => "str",
             Type::Bool => "bool",
             Type::None => "none",
+            Type::Fn => "fn",
         })
     }
 }

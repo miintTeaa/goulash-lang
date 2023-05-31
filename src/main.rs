@@ -14,13 +14,14 @@ fn main() {
         print (x_str);
         10
     });
+    x_str = fn a, b, c {
+        print (a);
+        print (b);
+        print (c);
+        20
+    };
     print (
-        fn a, b, c {
-            print (a);
-            print (b);
-            print (c);
-            20
-        } (1, 2, 3)
+        x_str_fn(1, 2, 3)
     );
     "#,
     );
