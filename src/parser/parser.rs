@@ -1,6 +1,6 @@
 use crate::{
     ast::Stmt,
-    error::LangError,
+    error::{LangError, LangErrorData},
     lexer::{Lexer, Token},
     span::Span,
 };
@@ -67,8 +67,8 @@ impl<'src> Parser<'src> {
             self.next();
             Ok(span)
         } else {
-            Err(LangError::new_syntax(
-                format!("expected {token}, got {}", self.peek()),
+            Err(LangError::new(
+                LangErrorData::ExpectedTokenGot(token, self.peek()),
                 self.span(),
             ))
         }

@@ -1,5 +1,5 @@
 use crate::{
-    error::{LangError, LangErrorBuilder},
+    error::{LangError, LangErrorData},
     span::Span,
 };
 
@@ -229,15 +229,11 @@ fn lex(lexer: &mut Lexer) -> Result<(Token, Span), LangError> {
         }
         _ => {
             lexer.next_char();
-            Err(LangErrorBuilder::new_syntax().with_msg("bad char"))
+            Err(LangErrorData::BadChar)
         }
     }
     .map(|tk| (tk, Span::from(start..lexer.current_byte_index)))
-    .map_err(|err| {
-        err.with_span(Span::from(start..lexer.current_byte_index))
-            .build()
-            .unwrap()
-    })
+    .map_err(|err| LangError::new(err, Span::from(start..lexer.current_byte_index)))
 }
 
 fn lex_num(lexer: &mut Lexer) {
@@ -248,7 +244,7 @@ fn lex_ident(lexer: &mut Lexer) {
     skip_while!(lexer, Some('a'..='z' | 'A'..='Z' | '0'..='9' | '_'));
 }
 
-fn lex_str(lexer: &mut Lexer) -> Result<Token, LangErrorBuilder> {
+fn lex_str(lexer: &mut Lexer) -> Result<Token, LangErrorData> {
     lexer.next_char();
     loop {
         if let Some('\\') = lexer.peek_char() {
@@ -258,7 +254,7 @@ fn lex_str(lexer: &mut Lexer) -> Result<Token, LangErrorBuilder> {
             lexer.next_char();
             break Ok(Token::String);
         } else if let None = lexer.peek_char() {
-            break Err(LangErrorBuilder::new_syntax().with_msg("unbounded string"));
+            break Err(LangErrorData::UnboundedString);
         } else {
             lexer.next_char();
         }

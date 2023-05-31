@@ -1,7 +1,7 @@
 use super::{expr::parse_or, parser::Parser};
 use crate::{
     ast::{ExprData, Stmt},
-    error::LangError,
+    error::{LangError, LangErrorData},
     lexer::Token,
     parser::expr::parse_expr,
 };
@@ -26,8 +26,8 @@ pub fn let_stmt_expect_let(parser: &mut Parser) {
     let lhs = parse_or(parser);
     parser.enable_reporting();
     let lhs_span = if !matches!(lhs.data(), ExprData::Var) {
-        parser.report(LangError::new_syntax(
-            format!("expected ident, got '{}'", &parser.src()[lhs.span.range()]),
+        parser.report(LangError::new(
+            LangErrorData::ExpectedToken(Token::Ident),
             lhs.span,
         ));
         recover_to!(parser;

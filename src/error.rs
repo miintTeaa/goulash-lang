@@ -1,57 +1,20 @@
-use std::{fmt::Display, num::ParseIntError};
+use std::{
+    fmt::Display,
+    num::{ParseFloatError, ParseIntError},
+};
 
-use crate::span::Span;
-
-pub struct LangErrorBuilder {
-    kind: LangErrorKind,
-    msg: Option<String>,
-    span: Option<Span>,
-}
-
-impl LangErrorBuilder {
-    pub fn new(kind: LangErrorKind) -> Self {
-        Self {
-            kind,
-            msg: None,
-            span: None,
-        }
-    }
-
-    pub fn new_syntax() -> Self {
-        Self::new(LangErrorKind::SyntaxError)
-    }
-
-    pub fn new_type() -> Self {
-        Self::new(LangErrorKind::TypeError)
-    }
-
-    pub fn with_span(mut self, span: impl Into<Span>) -> Self {
-        self.span = Some(span.into());
-        self
-    }
-
-    pub fn with_msg(mut self, msg: impl Into<String>) -> Self {
-        self.msg = Some(msg.into());
-        self
-    }
-
-    pub fn build(self) -> Option<LangError> {
-        Some(LangError::new(self.kind, self.msg?, self.span?))
-    }
-}
+use crate::{lexer::Token, span::Span};
 
 #[derive(Debug)]
 pub struct LangError {
-    kind: LangErrorKind,
-    msg: String,
+    data: LangErrorData,
     span: Span,
 }
 
 impl LangError {
-    pub fn new(kind: LangErrorKind, msg: impl Into<String>, span: impl Into<Span>) -> Self {
+    pub fn new(data: LangErrorData, span: impl Into<Span>) -> Self {
         Self {
-            kind,
-            msg: msg.into(),
+            data,
             span: span.into(),
         }
     }
@@ -59,42 +22,50 @@ impl LangError {
     pub fn span(&self) -> Span {
         self.span
     }
-
-    pub fn new_syntax(msg: impl Into<String>, span: impl Into<Span>) -> LangError {
-        Self::new(LangErrorKind::SyntaxError, msg, span)
-    }
-
-    pub fn new_type(msg: impl Into<String>, span: impl Into<Span>) -> LangError {
-        Self::new(LangErrorKind::TypeError, msg, span)
-    }
-}
-
-impl From<ParseIntError> for LangErrorBuilder {
-    fn from(_value: ParseIntError) -> Self {
-        LangErrorBuilder::new_syntax().with_msg("bad integer")
-    }
 }
 
 impl Display for LangError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}[{}]: {}",
-            &self.kind, &self.span, &self.msg
-        ))
+        f.write_fmt(format_args!("Error: [{}]: {}", &self.span, &self.data))
     }
 }
 
 #[derive(Debug)]
-pub enum LangErrorKind {
-    SyntaxError,
-    TypeError,
+pub enum LangErrorData {
+    ExpectedToken(Token),
+    ExpectedOneOfGot(Vec<Token>, Token),
+    ExpectedTokenGot(Token, Token),
+    ExpectedPrimaryGot(Token),
+    ParseIntError(ParseIntError),
+    ParseFloatError(ParseFloatError),
+    UnboundedString,
+    BadChar,
 }
 
-impl Display for LangErrorKind {
+impl Display for LangErrorData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            LangErrorKind::SyntaxError => "Syntax Error",
-            LangErrorKind::TypeError => "Type Error",
-        })
+        match self {
+            LangErrorData::ExpectedToken(tk) => write!(f, "expected {tk}"),
+            LangErrorData::ExpectedOneOfGot(tks, got) => {
+                write!(f, "expected ")?;
+                let mut tks_iter = tks.iter();
+                if let Some(tk) = tks_iter.next() {
+                    write!(f, "{tk}")?;
+                }
+                for _ in 0..(tks.len().saturating_sub(2)) {
+                    write!(f, ", {}", tks_iter.next().unwrap())?;
+                }
+                if let Some(tk) = tks_iter.next() {
+                    write!(f, " or {tk}")?;
+                }
+                write!(f, ", got {got}")
+            }
+            LangErrorData::UnboundedString => write!(f, "unbounded string"),
+            LangErrorData::ExpectedTokenGot(tk, got) => write!(f, "expected {tk}, got {got}"),
+            LangErrorData::ExpectedPrimaryGot(got) => write!(f, "expected value, got {got}"),
+            LangErrorData::ParseIntError(pir) => write!(f, "{pir}"),
+            LangErrorData::ParseFloatError(pfr) => write!(f, "{pfr}"),
+            LangErrorData::BadChar => write!(f, "unknown symbol"),
+        }
     }
 }

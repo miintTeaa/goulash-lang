@@ -3,7 +3,7 @@ use crate::{
         ops::{BinaryOp, UnaryOp},
         Expr, ExprData, ExprValueType, Stmt, StmtData,
     },
-    error::LangError,
+    error::{LangError, LangErrorData},
     lexer::Token,
     span::Span,
 };
@@ -163,10 +163,10 @@ fn parse_call(parser: &mut Parser) -> Expr {
                                     break;
                                 }
                                 _ => {
-                                    parser.report(LangError::new_syntax(
-                                        format!(
-                                            "expected comma or closing parenthesis, got {}",
-                                            parser.peek()
+                                    parser.report(LangError::new(
+                                        LangErrorData::ExpectedOneOfGot(
+                                            vec![Token::Comma, Token::RParen],
+                                            parser.peek(),
                                         ),
                                         parser.span(),
                                     ));
@@ -231,10 +231,7 @@ fn parse_primary(parser: &mut Parser) -> Expr {
         tk => {
             let span = parser.span();
             parser.next();
-            parser.report(LangError::new_syntax(
-                format!("expected value, got {tk}"),
-                span,
-            ));
+            parser.report(LangError::new(LangErrorData::ExpectedPrimaryGot(tk), span));
             Expr::new(ExprData::Error, span)
         }
     };
@@ -309,8 +306,11 @@ fn parse_fn(parser: &mut Parser) -> Expr {
                 }
                 (true, _) => {}
                 (false, _) => {
-                    parser.report(LangError::new_syntax(
-                        format!("expected lcurly or comma, got {}", parser.peek()),
+                    parser.report(LangError::new(
+                        LangErrorData::ExpectedOneOfGot(
+                            vec![Token::LCurly, Token::Comma],
+                            parser.peek(),
+                        ),
                         parser.span(),
                     ));
                     loop {
@@ -373,8 +373,11 @@ fn parse_class(parser: &mut Parser) -> Expr {
                     }
                     (true, _) => {}
                     (false, _) => {
-                        parser.report(LangError::new_syntax(
-                            format!("expected lcurly or comma, got {}", parser.peek()),
+                        parser.report(LangError::new(
+                            LangErrorData::ExpectedOneOfGot(
+                                vec![Token::LCurly, Token::Comma],
+                                parser.peek(),
+                            ),
                             parser.span(),
                         ));
                         loop {

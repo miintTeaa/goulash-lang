@@ -24,7 +24,6 @@ fn main() {
     );
     x_str_fn = obj TestObj {
         to_int = fn self {
-            print("transforming into int");
             self.foo
         }
         op_eq = fn self, other {
@@ -50,6 +49,7 @@ fn main() {
     print(x_str_fn_TestObj.foo);
     print(y.foo);
     print(x_str_fn_TestObj >= y);
+    print(2 >= y.foo);
     y.foo = y.foo;
     "#,
     );

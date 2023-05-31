@@ -5,7 +5,7 @@ use crate::{
         ops::{BinaryOp, UnaryOp},
         Expr, ExprData, ExprValueType,
     },
-    error::LangError,
+    error::{LangError, LangErrorData},
     span::Span,
     value::{FunctionData, Value},
 };
@@ -43,16 +43,16 @@ impl IIRExpr {
                 ExprData::UnOp(op, operand) => {
                     IIRExprData::UnOp(op, Box::new(Self::try_from(*operand, src)?))
                 }
-                ExprData::Lit(ExprValueType::Int) => IIRExprData::Const(Value::Int(
-                    src[other.span.range()]
-                        .parse()
-                        .map_err(|_| LangError::new_syntax("couldn't parse int", other.span))?,
-                )),
-                ExprData::Lit(ExprValueType::Float) => IIRExprData::Const(Value::Float(
-                    src[other.span.range()]
-                        .parse()
-                        .map_err(|_| LangError::new_syntax("couldn't parse float", other.span))?,
-                )),
+                ExprData::Lit(ExprValueType::Int) => {
+                    IIRExprData::Const(Value::Int(src[other.span.range()].parse().map_err(
+                        |pir| LangError::new(LangErrorData::ParseIntError(pir), other.span),
+                    )?))
+                }
+                ExprData::Lit(ExprValueType::Float) => {
+                    IIRExprData::Const(Value::Float(src[other.span.range()].parse().map_err(
+                        |pfr| LangError::new(LangErrorData::ParseFloatError(pfr), other.span),
+                    )?))
+                }
                 ExprData::Lit(ExprValueType::Str) => {
                     IIRExprData::Const(Value::Str(Rc::new(make_string(&src[other.span.range()]))))
                 }

@@ -1,4 +1,9 @@
-use crate::{ast::Stmt, error::LangError, lexer::Token, span::Span};
+use crate::{
+    ast::Stmt,
+    error::{LangError, LangErrorData},
+    lexer::Token,
+    span::Span,
+};
 
 use self::{parser::Parser, stmt::parse_stmt};
 
@@ -95,8 +100,8 @@ fn parse_delimited<T>(
             }
             (true, Err(_)) => {}
             (false, Err(e)) => {
-                parser.report(LangError::new_syntax(
-                    format!("expected {rhs} or {sep}, got {}", parser.peek()),
+                parser.report(LangError::new(
+                    LangErrorData::ExpectedOneOfGot(vec![rhs, sep], parser.peek()),
                     e.span(),
                 ));
                 recover!();
