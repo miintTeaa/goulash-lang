@@ -214,6 +214,7 @@ fn lex(lexer: &mut Lexer) -> Result<(Token, Span), LangError> {
         Some('(') => m!(Token::LParen),
         Some(')') => m!(Token::RParen),
         Some(',') => m!(Token::Comma),
+        Some('.') => m!(Token::Dot),
         Some(c) if c.is_whitespace() => {
             lexer.next_char();
             while let Some(c) = lexer.peek_char() {
@@ -266,16 +267,6 @@ macro_rules! lex_branch {
     ($name:ident; default: $default:expr;
         $($char:pat $(in $func:ident)? $(=> $branch:expr)?),+$(,)?) => {
         fn $name(lexer: &mut Lexer) -> Token {
-            macro_rules! if_next_not_ident {
-                ($token:expr) => {
-                    if matches!(lexer.peek_char(), Some('a'..='z' | 'A'..='Z' | '0'..='9' | '_')) {
-                        lex_ident(lexer);
-                        $default
-                    } else {
-                        $token
-                    }
-                }
-            }
             macro_rules! all {
                 ($string:literal: $token:expr) => {{
                     for c in $string.chars() {
@@ -285,8 +276,16 @@ macro_rules! lex_branch {
                         }
                         lexer.next_char();
                     }
-                    if_next_not_ident!($token)
+                    all!($token)
                 }};
+                ($token:expr) => {
+                    if matches!(lexer.peek_char(), Some('a'..='z' | 'A'..='Z' | '0'..='9' | '_')) {
+                        lex_ident(lexer);
+                        $default
+                    } else {
+                        $token
+                    }
+                }
             }
             match lexer.peek_char() {
                 $(
@@ -311,16 +310,26 @@ lex_branch!(lex_kw; default: Token::Ident;
     'b' => all!("reak": Token::Break),
     'r' => all!("eturn": Token::Return),
     'l' => all!("et": Token::Let),
-    'o' => all!("r": Token::Or),
     'a' => all!("nd": Token::And),
     't' => all!("rue": Token::True),
-    'e' => all!("lse": Token::Else),
     'N' => all!("one": Token::None),
+    'e' in lex_kw_e,
+    'o' in lex_kw_o,
     'f' in lex_kw_f,
+);
+
+lex_branch!(lex_kw_e; default: Token::Ident;
+    'l' => all!("se": Token::Else),
+    'x' => all!("tends": Token::Extends),
+);
+
+lex_branch!(lex_kw_o; default: Token::Ident;
+    'b' => all!("j": Token::Obj),
+    'r' => all!(Token::Or),
 );
 
 lex_branch!(lex_kw_f; default: Token::Ident;
     'o' => all!("r": Token::For),
     'a' => all!("lse": Token::False),
-    'n' => if_next_not_ident!(Token::Fn),
+    'n' => all!(Token::Fn),
 );

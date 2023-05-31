@@ -19,8 +19,8 @@ impl<T> Scope<T> {
         self.variables.insert(s, val);
     }
 
-    pub fn delete(&mut self, ident: &str) {
-        self.variables.remove_entry(ident);
+    pub fn delete(&mut self, ident: &str) -> Option<(String, T)> {
+        self.variables.remove_entry(ident)
     }
 
     pub fn get(&self, ident: &str) -> Option<&T> {

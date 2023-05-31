@@ -72,6 +72,19 @@ impl Debug for Expr {
                 .field(&callable)
                 .field(&args)
                 .finish(),
+            ExprData::Class(name, supers, fields) => f
+                .debug_tuple("Expr:CLASS")
+                .field(&span)
+                .field(name)
+                .field(supers)
+                .field(fields)
+                .finish(),
+            ExprData::Access(expr, ident_span) => f
+                .debug_tuple("Expr:ACCESS")
+                .field(&span)
+                .field(expr)
+                .field(ident_span)
+                .finish(),
         }
     }
 }
@@ -83,7 +96,9 @@ pub enum ExprData {
     Call(Box<Expr>, Vec<Expr>),
     Lit(ExprValueType),
     Block(Vec<Stmt>, Option<Box<Expr>>),
+    Class(Span, Vec<Expr>, Vec<(Span, Expr)>),
     Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
+    Access(Box<Expr>, Span),
     Var,
     Error,
 }

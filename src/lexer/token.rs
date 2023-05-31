@@ -15,6 +15,8 @@ pub enum Token {
     True,
     False,
     Else,
+    Obj,
+    Extends,
     None,
 
     // Symbols
@@ -34,6 +36,7 @@ pub enum Token {
     EqualEqual,
     Bang,
     BangEqual,
+    Dot,
 
     // Literals
     Ident,
@@ -60,6 +63,8 @@ impl Display for Token {
             Or => "'or'",
             And => "'and'",
             Else => "'else'",
+            Obj => "'class'",
+            Extends => "'extends'",
             None => "'None'",
             LCurly => "'{'",
             RCurly => "'}'",
@@ -74,6 +79,7 @@ impl Display for Token {
             Equal => "'='",
             EqualEqual => "'=='",
             Bang => "'!'",
+            Dot => "'.'",
             BangEqual => "'!='",
             Semicolon => "semicolon",
             Comma => "comma",

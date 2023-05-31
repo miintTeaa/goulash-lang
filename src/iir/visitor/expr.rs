@@ -16,6 +16,15 @@ pub trait IIRExprVisitor<T> {
                 self.visit_block(stmts, last_expr.as_deref(), expr.span)
             }
             IIRExprData::Call(expr, args) => self.visit_call(expr, args, expr.span),
+            IIRExprData::Class(name, supers, fields) => {
+                self.visit_class(*name, &*supers, &*fields, expr.span)
+            }
+            IIRExprData::Access(expr, access_ident) => {
+                self.visit_access(expr, *access_ident, expr.span)
+            }
+            IIRExprData::AccessSet(lhs, access_ident, rhs) => {
+                self.visit_access_set(lhs, *access_ident, rhs, expr.span)
+            }
         }
     }
 
@@ -25,4 +34,19 @@ pub trait IIRExprVisitor<T> {
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, span: Span) -> T;
     fn visit_block(&mut self, stmts: &[IIRStmt], expr: Option<&IIRExpr>, span: Span) -> T;
     fn visit_call(&mut self, expr: &IIRExpr, args: &[IIRExpr], span: Span) -> T;
+    fn visit_class(
+        &mut self,
+        name: Span,
+        supers: &[IIRExpr],
+        fields: &[(Span, IIRExpr)],
+        span: Span,
+    ) -> T;
+    fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, span: Span) -> T;
+    fn visit_access_set(
+        &mut self,
+        lhs: &IIRExpr,
+        access_ident: Span,
+        rhs: &IIRExpr,
+        span: Span,
+    ) -> T;
 }

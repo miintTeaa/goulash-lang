@@ -1,6 +1,6 @@
 mod scopes;
 
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use scopes::ScopeStack;
 
@@ -12,7 +12,7 @@ use crate::{
     },
     span::Span,
     types::Type,
-    value::{FunctionData, Value},
+    value::{FunctionData, ObjData, Value},
 };
 
 pub struct Interpreter<'src> {
@@ -135,8 +135,11 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                     if rhs_type == Type::None || rhs_type == old_type {
                         *old_val = rhs;
                     } else if rhs_type != old_type {
-                        self.scopes[scope_id].delete(ident);
-                        self.scopes[scope_id].declare(format!("{ident}_{rhs_type}"), rhs)
+                        let (mut name, _) = self.scopes[scope_id]
+                            .delete(ident)
+                            .expect("should still exist");
+                        rhs.apply_suffix(&mut name);
+                        self.scopes[scope_id].declare(name, rhs)
                     }
                     IntpControlFlow::Val(Value::None)
                 }
@@ -193,6 +196,67 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 func_data.call(arg_values, self)
             }
             _ => return IntpControlFlow::Ret(Value::None),
+        }
+    }
+
+    fn visit_class(
+        &mut self,
+        name: Span,
+        iir_supers: &[IIRExpr],
+        iir_fields: &[(Span, IIRExpr)],
+        _span: Span,
+    ) -> IntpControlFlow {
+        let mut fields = HashMap::default();
+        for (span, expr) in iir_fields {
+            match self.visit_expr(expr) {
+                v @ IntpControlFlow::Ret(_) => return v,
+                IntpControlFlow::Val(v) => fields.insert(self.src[span.range()].to_owned(), v),
+            };
+        }
+
+        let mut supers = Vec::new();
+        for sup in iir_supers {
+            match get_or_ret!(self, sup) {
+                Value::Obj(o) => supers.push(o),
+                _ => return IntpControlFlow::Ret(Value::None),
+            }
+        }
+
+        IntpControlFlow::Val(Value::Obj(Rc::new(RefCell::new(ObjData::new(
+            self.src[name.range()].to_owned(),
+            supers,
+            fields,
+        )))))
+    }
+
+    fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, _span: Span) -> IntpControlFlow {
+        let value = get_or_ret!(self, expr);
+
+        match value {
+            Value::Obj(o) => match o.borrow().get_field(&self.src[access_ident.range()]) {
+                Some(val) => IntpControlFlow::Val(val.clone()),
+                None => IntpControlFlow::Val(Value::None),
+            },
+            _ => IntpControlFlow::Ret(Value::None),
+        }
+    }
+
+    fn visit_access_set(
+        &mut self,
+        lhs: &IIRExpr,
+        access_ident: Span,
+        rhs: &IIRExpr,
+        _span: Span,
+    ) -> IntpControlFlow {
+        let rhs_val = get_or_ret!(self, rhs);
+        let lhs_val = get_or_ret!(self, lhs);
+        match lhs_val {
+            Value::Obj(o) => {
+                o.borrow_mut()
+                    .set_field(&self.src[access_ident.range()], rhs_val);
+                IntpControlFlow::Val(Value::None)
+            }
+            _ => IntpControlFlow::Ret(Value::None),
         }
     }
 }

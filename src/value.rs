@@ -16,8 +16,54 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ClassData {
-    funcs: HashMap<String, Rc<FunctionData>>,
+pub struct ObjData {
+    name: String,
+    supers: Vec<Rc<RefCell<ObjData>>>,
+    fields: HashMap<String, Value>,
+}
+
+impl ObjData {
+    pub fn new(
+        name: String,
+        supers: Vec<Rc<RefCell<ObjData>>>,
+        fields: HashMap<String, Value>,
+    ) -> Self {
+        Self {
+            name,
+            supers,
+            fields,
+        }
+    }
+
+    pub fn get_field(&self, ident: &str) -> Option<Value> {
+        match self.fields.get(ident) {
+            Some(field) => Some(field.clone()),
+            None => {
+                for sup in &self.supers {
+                    match sup.borrow().get_field(ident) {
+                        Some(field) => return Some(field),
+                        None => {}
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    pub fn set_field(&mut self, ident: &str, value: Value) -> Option<Value> {
+        match self.fields.contains_key(ident) {
+            true => self.fields.insert(ident.to_owned(), value),
+            false => {
+                for sup in &self.supers {
+                    match sup.borrow_mut().set_field(ident, value.clone()) {
+                        Some(field) => return Some(field),
+                        None => {}
+                    }
+                }
+                None
+            }
+        }
+    }
 }
 
 pub type FunctionSignature = Box<dyn Fn(&mut Interpreter) -> Value>;
@@ -77,12 +123,6 @@ impl Debug for FunctionData {
     }
 }
 
-#[derive(Debug)]
-pub struct ObjData {
-    class: Rc<ClassData>,
-    fields: HashMap<String, Value>,
-}
-
 #[derive(Debug, Clone)]
 pub enum Value {
     Int(i32),
@@ -90,12 +130,23 @@ pub enum Value {
     Str(Rc<String>),
     Bool(bool),
     Fn(Rc<FunctionData>),
-    Class(Rc<ClassData>),
     Obj(Rc<RefCell<ObjData>>),
     None,
 }
 
 impl Value {
+    pub fn apply_suffix(&self, s: &mut String) {
+        match self {
+            Value::Int(_) => *s += "_int",
+            Value::Float(_) => *s += "_float",
+            Value::Str(_) => *s += "_str",
+            Value::Bool(_) => *s += "_bool",
+            Value::Fn(_) => *s += "_fn",
+            Value::Obj(o) => s.extend(["_", &o.borrow().name]),
+            Value::None => *s += "_none",
+        };
+    }
+
     pub fn get_type(&self) -> Type {
         match self {
             Value::Int(_) => Type::Int,
@@ -103,8 +154,7 @@ impl Value {
             Value::Str(_) => Type::Str,
             Value::Bool(_) => Type::Bool,
             Value::Fn(_) => Type::Fn,
-            Value::Class(_) => todo!(),
-            Value::Obj(_) => todo!(),
+            Value::Obj(_) => Type::Obj,
             Value::None => Type::None,
         }
     }
@@ -208,9 +258,8 @@ impl Display for Value {
             Value::Float(fl) => write!(f, "{fl}"),
             Value::Str(s) => write!(f, "{s}"),
             Value::Bool(b) => write!(f, "{b}"),
-            Value::Fn(_) => todo!(),
-            Value::Class(_) => todo!(),
-            Value::Obj(_) => todo!(),
+            Value::Obj(o) => write!(f, "<obj {}>", o.borrow().name),
+            Value::Fn(func) => write!(f, "<fn {:p}>", func.callback),
             Value::None => write!(f, "None"),
         }
     }

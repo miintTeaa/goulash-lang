@@ -7,7 +7,6 @@ use goulash::{
 fn main() {
     let src = String::from(
         r#"
-    print("Expected output: Test, 10, 1, 2, 3, 20");
     let x = 2;
     print ({
         x = "Test";
@@ -23,6 +22,21 @@ fn main() {
     print (
         x_str_fn(1, 2, 3)
     );
+    x_str_fn = obj TestObj {
+        foo = 42
+    };
+    print(x_str_fn_TestObj);
+    print(x_str_fn_TestObj.foo);
+    let y = obj TestObjTwo extends x_str_fn_TestObj {
+        bar = 20
+        baz = 30
+    };
+    print(y);
+    print(y.bar);
+    print(y.foo);
+    y.foo = 10;
+    print(x_str_fn_TestObj.foo);
+    print(y.foo);
     "#,
     );
     let src = &src;

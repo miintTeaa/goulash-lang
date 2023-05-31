@@ -26,11 +26,20 @@ impl IIRExpr {
         Ok(IIRExpr {
             span: other.span,
             data: match other.data {
-                ExprData::Op(op, lhs, rhs) => IIRExprData::Op(
-                    op,
-                    Box::new(Self::try_from(*lhs, src)?),
-                    Box::new(Self::try_from(*rhs, src)?),
-                ),
+                ExprData::Op(op, lhs, rhs) => match (op, lhs.data) {
+                    (BinaryOp::Assign, ExprData::Access(accessed, access_ident_span)) => {
+                        IIRExprData::AccessSet(
+                            Box::new(IIRExpr::try_from(*accessed, src)?),
+                            access_ident_span,
+                            Box::new(IIRExpr::try_from(*rhs, src)?),
+                        )
+                    }
+                    (_, data) => IIRExprData::Op(
+                        op,
+                        Box::new(Self::try_from(Expr::new(data, lhs.span), src)?),
+                        Box::new(Self::try_from(*rhs, src)?),
+                    ),
+                },
                 ExprData::UnOp(op, operand) => {
                     IIRExprData::UnOp(op, Box::new(Self::try_from(*operand, src)?))
                 }
@@ -87,6 +96,27 @@ impl IIRExpr {
                     }
                     IIRExprData::Call(Box::new(IIRExpr::try_from(*callable, src)?), iir_args)
                 }
+                ExprData::Class(name, supers, fields) => {
+                    let iir_supers: Result<Vec<_>, LangError> = supers
+                        .into_iter()
+                        .map(|sup| IIRExpr::try_from(sup, src))
+                        .collect();
+                    let iir_supers = iir_supers?;
+
+                    let iir_fields: Result<Vec<_>, LangError> = fields
+                        .into_iter()
+                        .map(|(span, field)| match IIRExpr::try_from(field, src) {
+                            Ok(field) => Ok((span, field)),
+                            Err(e) => Err(e),
+                        })
+                        .collect();
+                    let iir_fields = iir_fields?;
+
+                    IIRExprData::Class(name, iir_supers, iir_fields)
+                }
+                ExprData::Access(expr, span) => {
+                    IIRExprData::Access(Box::new(IIRExpr::try_from(*expr, src)?), span)
+                }
             },
         })
     }
@@ -115,7 +145,10 @@ pub enum IIRExprData {
     UnOp(UnaryOp, Box<IIRExpr>),
     Block(Vec<IIRStmt>, Option<Box<IIRExpr>>),
     Call(Box<IIRExpr>, Vec<IIRExpr>),
+    Class(Span, Vec<IIRExpr>, Vec<(Span, IIRExpr)>),
     Const(Value),
+    AccessSet(Box<IIRExpr>, Span, Box<IIRExpr>),
+    Access(Box<IIRExpr>, Span),
     Var,
 }
 
