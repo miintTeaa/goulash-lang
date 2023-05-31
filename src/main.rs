@@ -49,6 +49,7 @@ fn main() {
     print(x_str_fn_TestObj.foo);
     print(y.foo);
     print(x_str_fn_TestObj >= y);
+    exit(obj Test {});
     print(2 >= y.foo);
     y.foo = y.foo;
     "#,

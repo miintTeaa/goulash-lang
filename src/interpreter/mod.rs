@@ -1,6 +1,6 @@
 mod scopes;
 
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, process::exit, rc::Rc};
 
 use scopes::ScopeStack;
 
@@ -37,6 +37,27 @@ impl<'src> Interpreter<'src> {
                         interpreter.scopes.find("printed").expect("should exist")
                     );
                     Value::None
+                }),
+            ))),
+        );
+
+        interpreter.scopes.declare(
+            "exit".to_owned(),
+            Value::Fn(Rc::new(FunctionData::new_raw(
+                vec!["exit_data".to_owned()],
+                Box::new(|interpreter: &mut Interpreter| {
+                    let value = interpreter
+                        .scopes
+                        .find_mut("exit_data")
+                        .expect("should exist")
+                        .clone();
+                    match value.to_int(interpreter) {
+                        IntpControlFlow::Val(Value::Int(i)) => exit(i),
+                        _ => {
+                            eprintln!("Internal error");
+                            exit(1)
+                        }
+                    }
                 }),
             ))),
         );
