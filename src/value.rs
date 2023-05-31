@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     fmt::{Debug, Display},
-    ops::{Add, Div, Mul, Neg, Sub},
     rc::Rc,
 };
 
@@ -178,40 +177,109 @@ impl Value {
             _ => true,
         }
     }
+
+    pub fn to_int(&self, interpreter: &mut Interpreter) -> IntpControlFlow {
+        match self {
+            Value::Int(i) => IntpControlFlow::Val(Value::Int(*i)),
+            Value::Float(f) => IntpControlFlow::Val(Value::Int(*f as i32)),
+            Value::Str(s) => str_to_int(s),
+            Value::Bool(b) => IntpControlFlow::Val(Value::Int(*b as i32)),
+            Value::Fn(_) => IntpControlFlow::Ret(Value::None),
+            Value::Obj(o) => match o.borrow().get_field("to_int") {
+                Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
+                _ => IntpControlFlow::Ret(Value::None),
+            },
+            Value::None => IntpControlFlow::Val(Value::Int(0)),
+        }
+    }
+
+    pub fn greater_than(self, rhs: Value, interpreter: &mut Interpreter) -> IntpControlFlow {
+        match (self, rhs) {
+            (Value::None, _) | (_, Value::None) => IntpControlFlow::Ret(Value::None),
+            (Value::Float(f1), Value::Float(f2)) => IntpControlFlow::Val(Value::Bool(f1 > f2)),
+            (Value::Float(f), Value::Int(i)) | (Value::Int(i), Value::Float(f)) => {
+                IntpControlFlow::Val(Value::Bool(f > i as f32))
+            }
+            (Value::Int(i1), Value::Int(i2)) => IntpControlFlow::Val(Value::Bool(i1 > i2)),
+            (o @ Value::Obj(_), other) | (other, o @ Value::Obj(_)) => {
+                match o.to_int(interpreter) {
+                    v @ IntpControlFlow::Ret(_) => return v,
+                    IntpControlFlow::Val(v) => v,
+                }
+                .greater_than(other, interpreter)
+            }
+            (_, _) => IntpControlFlow::Ret(Value::None),
+        }
+    }
+}
+
+fn str_to_int(s: &str) -> IntpControlFlow {
+    let mut val = 0;
+    for byte in s.as_bytes() {
+        match byte {
+            b'0'..=b'9' => {
+                val += (byte - b'0') as i32;
+            }
+            b' ' | b'\t' | b'\n' | 11 | 12 | 13 => {
+                return IntpControlFlow::Ret(Value::None);
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+    IntpControlFlow::Val(Value::Int(val))
 }
 
 macro_rules! impl_op {
-    (($op_name:ident, $op_fname:ident) => $op_symbol:tt) => {
-        impl $op_name<&Value> for Value {
-            type Output = IntpControlFlow;
-
-            fn $op_fname(self, rhs: &Value) -> Self::Output {
+    ($op_fname:ident => ($op_symbol:tt, $op_obj_fname:literal)) => {
+        impl Value {
+            pub fn $op_fname(self, rhs: Value, interpreter: &mut Interpreter) -> IntpControlFlow {
                 match (self, rhs) {
                     (Value::None, _) | (_, Value::None) => IntpControlFlow::Ret(Value::None),
-                    (Value::Float(f), Value::Int(i)) => IntpControlFlow::Val(Value::Float(f $op_symbol *i as f32)),
-                    (Value::Int(i), Value::Float(f)) => IntpControlFlow::Val(Value::Float(*f $op_symbol i as f32)),
+                    (Value::Float(f1), Value::Float(f2)) =>
+                        IntpControlFlow::Val(Value::Float(f1 $op_symbol f2)),
+                    (Value::Float(f), Value::Int(i)) | (Value::Int(i), Value::Float(f)) =>
+                        IntpControlFlow::Val(Value::Float(f $op_symbol i as f32)),
                     (Value::Int(i1), Value::Int(i2)) => {
                         concat_idents::concat_idents!(wrapping_fn = wrapping_, $op_fname {
-                            IntpControlFlow::Val(Value::Int(i1.wrapping_fn(*i2)))
+                            IntpControlFlow::Val(Value::Int(i1.wrapping_fn(i2)))
                         })
+                    }
+                    (Value::Obj(o), rhs) => {
+                        match o.borrow().get_field($op_obj_fname) {
+                            Some(Value::Fn(f)) => {
+                                f.call(vec![Value::Obj(o.clone()), rhs], interpreter)
+                            }
+                            _ => IntpControlFlow::Ret(Value::None),
+                        }
                     }
                     (_, _) => IntpControlFlow::Ret(Value::None),
                 }
             }
         }
+    };
 
-        impl $op_name<Value> for Value {
-            type Output = IntpControlFlow;
-
-            fn $op_fname(self, rhs: Value) -> Self::Output {
+    ($op_fname:ident -> bool => ($op_symbol:tt, $op_obj_fname:literal)) => {
+        impl Value {
+            pub fn $op_fname(self, rhs: Value, interpreter: &mut Interpreter) -> IntpControlFlow {
                 match (self, rhs) {
                     (Value::None, _) | (_, Value::None) => IntpControlFlow::Ret(Value::None),
-                    (Value::Float(f), Value::Int(i)) => IntpControlFlow::Val(Value::Float(f $op_symbol i as f32)),
-                    (Value::Int(i), Value::Float(f)) => IntpControlFlow::Val(Value::Float(f $op_symbol i as f32)),
+                    (Value::Float(f1), Value::Float(f2)) => {
+                        IntpControlFlow::Val(Value::Bool(f1 $op_symbol f2))
+                    }
+                    (Value::Float(f), Value::Int(i)) | (Value::Int(i), Value::Float(f)) =>
+                        IntpControlFlow::Val(Value::Bool(f $op_symbol i as f32)),
                     (Value::Int(i1), Value::Int(i2)) => {
-                        concat_idents::concat_idents!(wrapping_fn = wrapping_, $op_fname {
-                            IntpControlFlow::Val(Value::Int(i1.wrapping_fn(i2)))
-                        })
+                        IntpControlFlow::Val(Value::Bool(i1 $op_symbol i2))
+                    }
+                    (Value::Obj(o), other) | (other, Value::Obj(o)) => {
+                        match o.borrow().get_field($op_obj_fname) {
+                            Some(Value::Fn(f)) => {
+                                f.call(vec![Value::Obj(o.clone()), other], interpreter)
+                            }
+                            _ => IntpControlFlow::Ret(Value::None),
+                        }
                     }
                     (_, _) => IntpControlFlow::Ret(Value::None),
                 }
@@ -220,33 +288,35 @@ macro_rules! impl_op {
     };
 }
 
-impl_op!((Add, add) => +);
-impl_op!((Sub, sub) => -);
-impl_op!((Mul, mul) => *);
-impl_op!((Div, div) => /);
+impl_op!(add => (+, "op_add"));
+impl_op!(sub => (-, "op_sub"));
+impl_op!(mul => (*, "op_mul"));
+impl_op!(div => (/, "op_div"));
+impl_op!(eq -> bool => (==, "op_eq"));
 
-impl Neg for Value {
-    type Output = IntpControlFlow;
-
-    fn neg(self) -> Self::Output {
+impl Value {
+    pub fn neg(self, interpreter: &mut Interpreter) -> IntpControlFlow {
         match self {
             Value::Int(i) => IntpControlFlow::Val(Value::Int(-i)),
             Value::Float(f) => IntpControlFlow::Val(Value::Float(-f)),
+            Value::Obj(o) => match o.borrow_mut().get_field("op_neg") {
+                Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
+                _ => IntpControlFlow::Ret(Value::None),
+            },
             _ => IntpControlFlow::Ret(Value::None),
         }
     }
-}
 
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::None, _) | (_, Self::None) => true,
-            (Self::Int(i1), Self::Int(i2)) => i1 == i2,
-            (Self::Float(f1), Self::Float(f2)) => f1 == f2,
-            (Self::Int(i), Self::Float(f)) | (Self::Float(f), Self::Int(i)) => *i == *f as i32,
-            (Self::Str(s1), Self::Str(s2)) => s1 == s2,
-            (Self::Bool(b1), Self::Bool(b2)) => b1 == b2,
-            _ => false,
+    pub fn not(self, interpreter: &mut Interpreter) -> IntpControlFlow {
+        match self {
+            Value::Obj(o) => match o.borrow().get_field("op_not") {
+                Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
+                _ => match o.borrow().get_field("is_truthy") {
+                    Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
+                    _ => IntpControlFlow::Val(Value::Bool(true)),
+                },
+            },
+            value => IntpControlFlow::Val(Value::Bool(!value.is_truthy())),
         }
     }
 }

@@ -208,6 +208,8 @@ fn lex(lexer: &mut Lexer) -> Result<(Token, Span), LangError> {
         Some('/') => m!(Token::Slash),
         Some('=') => m!(Token::Equal, Some('=') => Token::EqualEqual),
         Some('!') => m!(Token::Bang, Some('=') => Token::BangEqual),
+        Some('>') => m!(Token::Greater, Some('=') => Token::GreaterEqual),
+        Some('<') => m!(Token::Lesser, Some('=') => Token::LesserEqual),
         Some(';') => m!(Token::Semicolon),
         Some('{') => m!(Token::LCurly),
         Some('}') => m!(Token::RCurly),

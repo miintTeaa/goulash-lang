@@ -57,10 +57,19 @@ binary_parse!(parse_and < parse_eq;
     }
 );
 
-binary_parse!(parse_eq < parse_sum;
+binary_parse!(parse_eq < parse_gt;
     ops {
         EqualEqual => Eq,
         BangEqual => NotEq,
+    }
+);
+
+binary_parse!(parse_gt < parse_sum;
+    ops {
+        Greater => Greater,
+        GreaterEqual => GreaterEq,
+        Lesser => Lesser,
+        LesserEqual => LesserEq,
     }
 );
 

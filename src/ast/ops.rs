@@ -9,6 +9,10 @@ pub enum BinaryOp {
     Div,
     Eq,
     NotEq,
+    Greater,
+    GreaterEq,
+    Lesser,
+    LesserEq,
 
     Or,
     And,
@@ -26,6 +30,10 @@ impl Display for BinaryOp {
             BinaryOp::And => "and",
             BinaryOp::Eq => "==",
             BinaryOp::NotEq => "!=",
+            BinaryOp::Greater => ">",
+            BinaryOp::GreaterEq => ">=",
+            BinaryOp::Lesser => "<",
+            BinaryOp::LesserEq => "<=",
         })
     }
 }

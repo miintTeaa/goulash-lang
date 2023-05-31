@@ -53,9 +53,18 @@ impl<'src> Interpreter<'src> {
     }
 }
 
-macro_rules! get_or_ret {
+macro_rules! visit_or_ret {
     ($self:expr, $val:expr) => {
         match $self.visit_expr($val) {
+            v @ IntpControlFlow::Ret(_) => return v,
+            IntpControlFlow::Val(v) => v,
+        }
+    };
+}
+
+macro_rules! get_or_ret {
+    ($val:expr) => {
+        match $val {
             v @ IntpControlFlow::Ret(_) => return v,
             IntpControlFlow::Val(v) => v,
         }
@@ -70,12 +79,12 @@ pub enum IntpControlFlow {
 
 impl<'src> IIRStmtVisitor<IntpControlFlow> for Interpreter<'src> {
     fn visit_expr_stmt(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
-        get_or_ret!(self, expr);
+        visit_or_ret!(self, expr);
         IntpControlFlow::Val(Value::None)
     }
 
     fn visit_let(&mut self, ident: Span, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
-        let val = get_or_ret!(self, expr);
+        let val = visit_or_ret!(self, expr);
         self.scopes.declare(self.src[ident.range()].to_owned(), val);
         IntpControlFlow::Val(Value::None)
     }
@@ -101,30 +110,46 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         _span: Span,
     ) -> IntpControlFlow {
         macro_rules! op {
-            ($op_symbol:tt) => {{
-                let lhs = get_or_ret!(self, lhs);
-                let rhs = get_or_ret!(self, rhs);
-                lhs $op_symbol rhs
+            ($op_name:ident) => {{
+                let lhs = visit_or_ret!(self, lhs);
+                let rhs = visit_or_ret!(self, rhs);
+                lhs.$op_name(rhs, self)
             }};
         }
         match op {
-            BinaryOp::Add => op!(+),
-            BinaryOp::Sub => op!(-),
-            BinaryOp::Mul => op!(*),
-            BinaryOp::Div => op!(/),
-            BinaryOp::Eq => {
-                let lhs = get_or_ret!(self, lhs);
-                let rhs = get_or_ret!(self, rhs);
-                IntpControlFlow::Val(Value::Bool(lhs == rhs))
-            }
+            BinaryOp::Add => op!(add),
+            BinaryOp::Sub => op!(sub),
+            BinaryOp::Mul => op!(mul),
+            BinaryOp::Div => op!(div),
+            BinaryOp::Eq => op!(eq),
             BinaryOp::NotEq => {
-                let lhs = get_or_ret!(self, lhs);
-                let rhs = get_or_ret!(self, rhs);
-                IntpControlFlow::Val(Value::Bool(lhs != rhs))
+                let lhs = visit_or_ret!(self, lhs);
+                let rhs = visit_or_ret!(self, rhs);
+                lhs.eq(rhs, self)
+            }
+            BinaryOp::Greater => {
+                op!(greater_than)
+            }
+            BinaryOp::GreaterEq => {
+                let is_greater_result = get_or_ret!(op!(greater_than));
+                if !is_greater_result.is_truthy() {
+                    op!(eq)
+                } else {
+                    IntpControlFlow::Val(is_greater_result)
+                }
+            }
+            BinaryOp::Lesser => get_or_ret!(op!(greater_than)).not(self),
+            BinaryOp::LesserEq => {
+                let is_lesser_result = get_or_ret!(get_or_ret!(op!(greater_than)).not(self));
+                if is_lesser_result.is_truthy() {
+                    op!(eq)
+                } else {
+                    IntpControlFlow::Val(is_lesser_result)
+                }
             }
             BinaryOp::Assign => match lhs.data() {
                 IIRExprData::Var => {
-                    let rhs = get_or_ret!(self, rhs);
+                    let rhs = visit_or_ret!(self, rhs);
                     let ident = &self.src[lhs.span.range()];
                     let (old_val, scope_id) = match self.scopes.find_with_scope_mut(ident) {
                         Some(v) => v,
@@ -146,19 +171,19 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 _ => IntpControlFlow::Ret(Value::None),
             },
             BinaryOp::Or => IntpControlFlow::Val(Value::Bool(
-                get_or_ret!(self, lhs).is_truthy() || get_or_ret!(self, rhs).is_truthy(),
+                visit_or_ret!(self, lhs).is_truthy() || visit_or_ret!(self, rhs).is_truthy(),
             )),
             BinaryOp::And => IntpControlFlow::Val(Value::Bool(
-                get_or_ret!(self, lhs).is_truthy() && get_or_ret!(self, rhs).is_truthy(),
+                visit_or_ret!(self, lhs).is_truthy() && visit_or_ret!(self, rhs).is_truthy(),
             )),
         }
     }
 
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, _span: Span) -> IntpControlFlow {
-        let operand = get_or_ret!(self, operand);
+        let operand = visit_or_ret!(self, operand);
         match op {
-            UnaryOp::Neg => -operand,
-            UnaryOp::Not => IntpControlFlow::Val(Value::Bool(!operand.is_truthy())),
+            UnaryOp::Neg => operand.neg(self),
+            UnaryOp::Not => operand.not(self),
         }
     }
 
@@ -187,11 +212,11 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
     }
 
     fn visit_call(&mut self, expr: &IIRExpr, args: &[IIRExpr], _span: Span) -> IntpControlFlow {
-        match get_or_ret!(self, expr) {
+        match visit_or_ret!(self, expr) {
             Value::Fn(func_data) => {
                 let mut arg_values = Vec::new();
                 for arg in args {
-                    arg_values.push(get_or_ret!(self, arg));
+                    arg_values.push(visit_or_ret!(self, arg));
                 }
                 func_data.call(arg_values, self)
             }
@@ -216,7 +241,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
 
         let mut supers = Vec::new();
         for sup in iir_supers {
-            match get_or_ret!(self, sup) {
+            match visit_or_ret!(self, sup) {
                 Value::Obj(o) => supers.push(o),
                 _ => return IntpControlFlow::Ret(Value::None),
             }
@@ -230,7 +255,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
     }
 
     fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, _span: Span) -> IntpControlFlow {
-        let value = get_or_ret!(self, expr);
+        let value = visit_or_ret!(self, expr);
 
         match value {
             Value::Obj(o) => match o.borrow().get_field(&self.src[access_ident.range()]) {
@@ -248,8 +273,8 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         rhs: &IIRExpr,
         _span: Span,
     ) -> IntpControlFlow {
-        let rhs_val = get_or_ret!(self, rhs);
-        let lhs_val = get_or_ret!(self, lhs);
+        let rhs_val = visit_or_ret!(self, rhs);
+        let lhs_val = visit_or_ret!(self, lhs);
         match lhs_val {
             Value::Obj(o) => {
                 o.borrow_mut()

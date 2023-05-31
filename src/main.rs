@@ -23,6 +23,14 @@ fn main() {
         x_str_fn(1, 2, 3)
     );
     x_str_fn = obj TestObj {
+        to_int = fn self {
+            print("transforming into int");
+            self.foo
+        }
+        op_eq = fn self, other {
+            print("checking if eq");
+            self.foo == other.foo
+        }
         foo = 42
     };
     print(x_str_fn_TestObj);
@@ -30,6 +38,10 @@ fn main() {
     let y = obj TestObjTwo extends x_str_fn_TestObj {
         bar = 20
         baz = 30
+        op_eq = fn self, other {
+            print("checking if eq in testobjtwo");
+            self.foo == other.foo
+        }
     };
     print(y);
     print(y.bar);
@@ -37,6 +49,8 @@ fn main() {
     y.foo = 10;
     print(x_str_fn_TestObj.foo);
     print(y.foo);
+    print(x_str_fn_TestObj >= y);
+    y.foo = y.foo;
     "#,
     );
     let src = &src;
