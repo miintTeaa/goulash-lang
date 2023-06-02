@@ -1,13 +1,10 @@
+
 let println = fn x {
     print(x);
     print("\n");
 };
 let test = fn x { print("" + x + " "); x };
-print(x);
-println("");
-println(" hello!");
-x = " hello!";
-println(x_str);
+
 let prev = obj Test1 {
     shout2 = fn a, b {
         print("shouting " + a);
@@ -72,14 +69,36 @@ let make_test = fn name, test {
 };
 
 let make_ref = fn x {
-    obj Ref { ref = x; }
+    obj Ref {
+        inner = x;
+        get = fn self { self.inner };
+        set = fn self, to { self.inner = to; };
+        map = fn self, f { self.inner = f(self.inner) };
+        apply = fn self, f { f(self.inner) };
+    }
 };
+
+let gen_add = fn added {
+    fn x {
+        x + added
+    }
+};
+
+let x = make_ref("hello");
+x:set(x:get() + " world!");
+x:map(gen_add(1));
+println(x:get());
 
 let tests = [
     fn {
         let string_acc = make_ref("");
         println("1 2 3 4 11");
         let x = test(1) + test(2) * test(3) + test(4);
+        print(x);
+        println("");
+        println(" hello!");
+        x = " hello!";
+        println(x_str);
     }
 ];
 

@@ -79,7 +79,8 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
                 | Op::prefix(Rule::neg))
             .op(Op::postfix(Rule::call_args)
                 | Op::postfix(Rule::index)
-                | Op::postfix(Rule::access))
+                | Op::postfix(Rule::access)
+                | Op::postfix(Rule::call_self))
     };
     }
 
@@ -128,6 +129,40 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
                     Box::new(expr),
                     op.into_inner().map(|p| parse_expr(p)).collect(),
                 ),
+                Rule::call_self => {
+                    // turns
+                    // expr:func(arg1, arg2)
+                    // into
+                    // {
+                    //    let func = expr;
+                    //    func.func(func, arg1, arg2)
+                    // }
+                    // i have to do this in a hacky way because i don't
+                    // want to have to reinterpret expr twice, and i store
+                    // idents as spans
+
+                    let mut call_self_pairs = op.into_inner();
+                    let ident_span = {
+                        let span = call_self_pairs.next().unwrap().as_span();
+                        Span::from(span.start()..span.end())
+                    };
+
+                    let let_bind = Stmt::new_let(Ok(ident_span), expr, span);
+
+                    let access = Expr::new(
+                        ExprData::Access(
+                            Box::new(Expr::new(ExprData::Var, ident_span)),
+                            ident_span,
+                        ),
+                        span,
+                    );
+
+                    let mut args = vec![Expr::new(ExprData::Var, ident_span)];
+                    args.extend(call_self_pairs.map(|p| parse_expr(p)));
+
+                    let call = Expr::new(ExprData::Call(Box::new(access), args), span);
+                    ExprData::Block(vec![let_bind], Some(Box::new(call)))
+                }
                 Rule::index => ExprData::Index(
                     Box::new(expr),
                     Box::new(parse_expr(op.into_inner().next().unwrap())),
