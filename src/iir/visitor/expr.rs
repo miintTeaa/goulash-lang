@@ -28,11 +28,13 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::AccessSet(lhs, access_ident, rhs) => {
                 self.visit_access_set(lhs, access_ident.clone(), rhs, expr.span)
             }
-            IIRExprData::List(exprs) => self.visit_list(exprs),
-            IIRExprData::Index(expr, index) => self.visit_index(expr, index),
-            IIRExprData::IndexSet(expr, index, to) => self.visit_index_set(expr, index, to),
+            IIRExprData::List(exprs) => self.visit_list(exprs, expr.span),
+            IIRExprData::Index(expr, index) => self.visit_index(expr, index, expr.span),
+            IIRExprData::IndexSet(expr, index, to) => {
+                self.visit_index_set(expr, index, to, expr.span)
+            }
             IIRExprData::If(condition, block, r#else) => {
-                self.visit_if(condition, block, r#else.as_deref())
+                self.visit_if(condition, block, r#else.as_deref(), expr.span)
             }
             IIRExprData::Loop(block) => self.visit_loop(block, expr.span),
             IIRExprData::Break(brk_expr) => self.visit_break(brk_expr.as_deref(), expr.span),
@@ -60,10 +62,16 @@ pub trait IIRExprVisitor<T> {
         rhs: &IIRExpr,
         span: Span,
     ) -> T;
-    fn visit_list(&mut self, exprs: &[IIRExpr]) -> T;
-    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr) -> T;
-    fn visit_index_set(&mut self, expr: &IIRExpr, index: &IIRExpr, to: &IIRExpr) -> T;
-    fn visit_if(&mut self, condition: &IIRExpr, block: &IIRExpr, r#else: Option<&IIRExpr>) -> T;
+    fn visit_list(&mut self, exprs: &[IIRExpr], span: Span) -> T;
+    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr, span: Span) -> T;
+    fn visit_index_set(&mut self, expr: &IIRExpr, index: &IIRExpr, to: &IIRExpr, span: Span) -> T;
+    fn visit_if(
+        &mut self,
+        condition: &IIRExpr,
+        block: &IIRExpr,
+        r#else: Option<&IIRExpr>,
+        span: Span,
+    ) -> T;
     fn visit_loop(&mut self, block: &IIRExpr, span: Span) -> T;
     fn visit_break(&mut self, expr: Option<&IIRExpr>, span: Span) -> T;
 }

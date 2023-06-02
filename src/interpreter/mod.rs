@@ -328,7 +328,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
         }
     }
 
-    fn visit_list(&mut self, exprs: &[IIRExpr]) -> IntpControlFlow {
+    fn visit_list(&mut self, exprs: &[IIRExpr], _span: Span) -> IntpControlFlow {
         let mut values = Vec::new();
         for expr in exprs {
             values.push(get_or_ret!(self.visit_expr(expr)));
@@ -336,7 +336,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
         IntpControlFlow::Val(Value::new_list(values))
     }
 
-    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr) -> IntpControlFlow {
+    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr, _span: Span) -> IntpControlFlow {
         visit_or_ret!(self, expr).index_by(visit_or_ret!(self, index), self)
     }
 
@@ -345,6 +345,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
         expr: &IIRExpr,
         index: &IIRExpr,
         to: &IIRExpr,
+        _span: Span,
     ) -> IntpControlFlow {
         visit_or_ret!(self, expr).index_by_set(
             visit_or_ret!(self, index),
@@ -358,6 +359,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
         condition: &IIRExpr,
         block: &IIRExpr,
         r#else: Option<&IIRExpr>,
+        _span: Span,
     ) -> IntpControlFlow {
         if visit_or_ret!(self, condition).is_truthy() {
             self.visit_expr(block)

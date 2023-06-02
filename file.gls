@@ -111,10 +111,10 @@ obj Test4 {};
 
 let test = 0;
 
-loop {
+println(loop {
     println(test);
     test = test + 1;
     if test > 5 {
-        break;
+        break "ending loop";
     }
-};
+});
