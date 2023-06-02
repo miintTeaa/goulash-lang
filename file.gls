@@ -105,19 +105,26 @@ let tests = [
     }
 ];
 
+let test = 0;
+let test_list = [];
+
+println(loop {
+    println(test);
+    std.list.append(test_list, test);
+    test = test + 1;
+    if test > 5 {
+        break "ending loop";
+    }
+});
+println(test_list);
+println(std.list.len(test_list));
+std.list.remove(test_list, 0);
+println(test_list);
+println(std.list.len(test_list));
+
 // parse tests //
 if true {} elif true {} elif true {};
 if true {};
 if true {} else {};
 obj Test3 as test2 {};
 obj Test4 {};
-
-let test = 0;
-
-println(loop {
-    println(test);
-    test = test + 1;
-    if test > 5 {
-        break "ending loop";
-    }
-});

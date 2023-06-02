@@ -31,14 +31,25 @@ impl Interpreter {
             scopes: ScopeStack::new(),
         };
 
+        macro_rules! get {
+            ($interpreter:expr, $id:literal) => {
+                $interpreter.scopes.find(&id($id)).expect("should exist")
+            };
+        }
+
+        macro_rules! get_mut {
+            ($interpreter:expr, $id:literal) => {
+                $interpreter
+                    .scopes
+                    .find_mut(&id($id))
+                    .expect("should exist")
+            };
+        }
+
         interpreter.scopes.declare(
             id("__builtin__"),
             Value::new_fn_raw(vec![id("builtin_name")], |interpreter: &mut Interpreter| {
-                let builtin_name = interpreter
-                    .scopes
-                    .find(&id("builtin_name"))
-                    .expect("should exist")
-                    .to_string();
+                let builtin_name = get!(interpreter, "builtin_name").to_string();
 
                 let builtin_name = String::from("@") + &builtin_name;
 
@@ -78,10 +89,7 @@ impl Interpreter {
             id("@print"),
             Value::new_fn_raw(vec![id("printed")], |interpreter: &mut Interpreter| {
                 let mut stdout = std::io::stdout().lock();
-                let printed = interpreter
-                    .scopes
-                    .find(&id("printed"))
-                    .expect("should exist");
+                let printed = get!(interpreter, "printed");
                 let buffer = format!("{printed}");
                 let mut buffer = buffer.as_bytes();
                 let mut written = 0;
@@ -112,17 +120,69 @@ impl Interpreter {
         interpreter.scopes.declare(
             id("@exit"),
             Value::new_fn_raw(vec![id("exit_data")], |interpreter: &mut Interpreter| {
-                let value = interpreter
-                    .scopes
-                    .find_mut(&id("exit_data"))
-                    .expect("should exist")
-                    .clone();
+                let value = get_mut!(interpreter, "exit_data").clone();
                 match value.to_int(interpreter) {
                     IntpControlFlow::Val(Value::Int(i)) => exit(i),
                     _ => {
                         eprintln!("Internal error");
                         exit(1)
                     }
+                }
+            }),
+        );
+
+        interpreter.scopes.declare(
+            id("@lremove"),
+            Value::new_fn_raw(
+                vec![id("li"), id("index")],
+                |interpreter: &mut Interpreter| {
+                    let id = match get!(interpreter, "index").clone().to_int(interpreter) {
+                        IntpControlFlow::Ret(v) => return v,
+                        IntpControlFlow::Val(Value::Int(v)) if v >= 0 => v,
+                        _ => return Value::None,
+                    };
+                    let list = match get_mut!(interpreter, "li") {
+                        Value::List(list) => list,
+                        _ => return Value::None,
+                    };
+                    if id as usize >= list.borrow().len() {
+                        return Value::None;
+                    };
+                    list.borrow_mut().remove(id as usize)
+                },
+            ),
+        );
+
+        interpreter.scopes.declare(
+            id("@lappend"),
+            Value::new_fn_raw(
+                vec![id("li"), id("appended")],
+                |interpreter: &mut Interpreter| {
+                    let appended = interpreter
+                        .scopes
+                        .find(&id("appended"))
+                        .expect("should exist")
+                        .clone();
+                    let list = interpreter
+                        .scopes
+                        .find_mut(&id("li"))
+                        .expect("should exist");
+                    if let Value::List(list) = list {
+                        list.borrow_mut().push(appended)
+                    };
+                    Value::None
+                },
+            ),
+        );
+
+        interpreter.scopes.declare(
+            id("@llen"),
+            Value::new_fn_raw(vec![id("li")], |interpreter: &mut Interpreter| {
+                let list = interpreter.scopes.find(&id("li")).expect("should exist");
+                if let Value::List(list) = list {
+                    Value::Int(list.borrow().len() as i32)
+                } else {
+                    Value::None
                 }
             }),
         );

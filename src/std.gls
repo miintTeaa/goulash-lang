@@ -1,8 +1,16 @@
 return obj Std {
-	print = fn printed {
-		__builtin__("print")(printed)
-	};
-	exit = fn exit_val {
-		__builtin__("exit")(exit_val)
+	// print(x) -> bool;
+	// return value indicates whether it succeded or not
+	print = __builtin__("print")(printed);
+	// exit(x) -> !;
+	// will never return
+	exit = __builtin__("exit");
+	list = obj StdList {
+		// append(li, appended) -> None;
+		append = __builtin__("lappend");
+		// remove(li, index) -> any;
+		remove = __builtin__("lremove");
+		// len(li) -> int;
+		len = __builtin__("llen");
 	};
 };
