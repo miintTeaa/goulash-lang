@@ -11,8 +11,6 @@ use crate::{
     span::Span,
 };
 
-pub mod ast;
-
 #[derive(pest_derive::Parser)]
 #[grammar = "parser/parser.pest"]
 pub struct LangParser;
