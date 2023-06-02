@@ -61,7 +61,6 @@ impl<T> ScopeStack<T> {
         None
     }
 
-    #[allow(unused)]
     pub fn find_mut(&mut self, ident: &str) -> Option<&mut T> {
         for scope in self.scopes.iter_mut().rev() {
             match scope.get_mut(ident) {
@@ -72,7 +71,6 @@ impl<T> ScopeStack<T> {
         None
     }
 
-    #[allow(unused)]
     pub fn find_with_scope(&self, ident: &str) -> Option<(&T, usize)> {
         for (scope_id, scope) in self.scopes.iter().enumerate().rev() {
             match scope.get(ident) {
