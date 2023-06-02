@@ -7,5 +7,6 @@ pub enum Type {
     Fn,
     Obj,
     List,
+    Rv,
     None,
 }

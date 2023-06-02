@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     cell::RefCell,
     collections::HashMap,
     fmt::{Debug, Display},
@@ -125,6 +126,10 @@ impl Debug for FunctionData {
     }
 }
 
+pub trait RustValue: Any + Debug {
+    fn suffix(&self) -> &str;
+}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Int(i32),
@@ -134,6 +139,7 @@ pub enum Value {
     Fn(Rc<FunctionData>),
     List(Rc<RefCell<Vec<Value>>>),
     Obj(Rc<RefCell<ObjData>>),
+    RustValue(Rc<dyn RustValue>),
     None,
 }
 
@@ -179,6 +185,7 @@ impl Value {
             Value::Obj(o) => s.extend(["_", &o.borrow().name]),
             Value::List(_) => s += "_list",
             Value::None => s += "_none",
+            Value::RustValue(rv) => s.extend(["_", rv.suffix()]),
         };
         s
     }
@@ -192,6 +199,7 @@ impl Value {
             Value::Fn(_) => Type::Fn,
             Value::Obj(_) => Type::Obj,
             Value::List(_) => Type::List,
+            Value::RustValue(_) => Type::Rv,
             Value::None => Type::None,
         }
     }
@@ -475,6 +483,7 @@ impl Display for Value {
                 write!(f, "]")
             }
             Value::None => write!(f, "None"),
+            Value::RustValue(rv) => write!(f, "<rv {:p}>", rv),
         }
     }
 }
