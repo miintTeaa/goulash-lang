@@ -131,6 +131,18 @@ impl IIRExpr {
                     Box::new(IIRExpr::try_from(*expr, src)?),
                     Box::new(IIRExpr::try_from(*index, src)?),
                 ),
+                ExprData::If(condition, block, r#else) => {
+                    let r#else = match r#else {
+                        Some(r#else) => Some(Box::new(IIRExpr::try_from(*r#else, src)?)),
+                        None => None,
+                    };
+
+                    IIRExprData::If(
+                        Box::new(IIRExpr::try_from(*condition, src)?),
+                        Box::new(IIRExpr::try_from(*block, src)?),
+                        r#else,
+                    )
+                }
             },
         })
     }
@@ -166,6 +178,7 @@ pub enum IIRExprData {
     Access(Box<IIRExpr>, Span),
     IndexSet(Box<IIRExpr>, Box<IIRExpr>, Box<IIRExpr>),
     Index(Box<IIRExpr>, Box<IIRExpr>),
+    If(Box<IIRExpr>, Box<IIRExpr>, Option<Box<IIRExpr>>),
     Var,
 }
 

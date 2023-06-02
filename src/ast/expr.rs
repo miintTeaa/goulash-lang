@@ -88,6 +88,12 @@ impl Debug for Expr {
                 .field(li)
                 .field(index)
                 .finish(),
+            ExprData::If(condition, block, r#else) => f
+                .debug_tuple(&format!("Expr:IF[{span}]"))
+                .field(condition)
+                .field(block)
+                .field(r#else)
+                .finish(),
         }
     }
 }
@@ -101,6 +107,7 @@ pub enum ExprData {
     Block(Vec<Stmt>, Option<Box<Expr>>),
     Class(Span, Vec<Expr>, Vec<(Span, Expr)>),
     Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
+    If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
     Access(Box<Expr>, Span),
     List(Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),

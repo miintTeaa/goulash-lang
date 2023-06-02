@@ -28,7 +28,10 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::List(exprs) => self.visit_list(exprs),
             IIRExprData::Index(expr, index) => self.visit_index(expr, index),
             IIRExprData::IndexSet(expr, index, to) => self.visit_index_set(expr, index, to),
-        }
+            IIRExprData::If(condition, block, r#else) => {
+                self.visit_if(condition, block, r#else.as_deref())
+            }
+        }   
     }
 
     fn visit_var(&mut self, span: Span) -> T;
@@ -55,4 +58,5 @@ pub trait IIRExprVisitor<T> {
     fn visit_list(&mut self, exprs: &[IIRExpr]) -> T;
     fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr) -> T;
     fn visit_index_set(&mut self, expr: &IIRExpr, index: &IIRExpr, to: &IIRExpr) -> T;
+    fn visit_if(&mut self, condition: &IIRExpr, block: &IIRExpr, r#else: Option<&IIRExpr>) -> T;
 }

@@ -156,7 +156,7 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
         Rule::integer => Expr::new_lit(LiteralKind::Int, span),
         Rule::string => Expr::new_lit(LiteralKind::Str, span),
         Rule::block => {
-            let (stmts, expr) = parse_block(dbg!(primary.into_inner()));
+            let (stmts, expr) = parse_block_data(dbg!(primary.into_inner()));
 
             Expr::new(ExprData::Block(stmts, expr), span)
         }
@@ -172,7 +172,7 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
             let expr;
             let mut args = Vec::new();
             match first.as_rule() {
-                Rule::block => (stmts, expr) = parse_block(first.into_inner()),
+                Rule::block => (stmts, expr) = parse_block_data(first.into_inner()),
                 Rule::ident_lst => {
                     for arg in first.into_inner() {
                         args.push({
@@ -180,12 +180,63 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
                             Span::from(arg_span.start()..arg_span.end())
                         });
                     }
-                    (stmts, expr) = parse_block(func_pairs.next().unwrap().into_inner());
+                    (stmts, expr) = parse_block_data(func_pairs.next().unwrap().into_inner());
                 }
                 _ => unreachable!(),
             }
 
             Expr::new(ExprData::Fn(args, stmts, expr), span)
+        }
+        Rule::r#if => {
+            let mut if_pairs = primary.into_inner();
+            let condition = parse_expr(if_pairs.next().unwrap());
+            let block = parse_block(if_pairs.next().unwrap());
+            let mut elifs = Vec::new();
+            let mut r#else = None;
+            loop {
+                match if_pairs.next() {
+                    Some(found_elif) if found_elif.as_rule() == Rule::elif => {
+                        let mut elif_pairs = found_elif.into_inner();
+                        let condition = parse_expr(elif_pairs.next().unwrap());
+                        let block = parse_block(elif_pairs.next().unwrap());
+                        elifs.push((condition, block));
+                    }
+                    Some(found_else) if found_else.as_rule() == Rule::r#else => {
+                        let mut else_pairs = found_else.into_inner();
+                        r#else = Some(Box::new(parse_block(else_pairs.next().unwrap())));
+                        break;
+                    }
+                    None => break,
+                    rule => unreachable!("{rule:?}"),
+                }
+            }
+
+            fn build_chain(
+                mut chain: impl Iterator<Item = (Expr, Expr)>,
+                r#else: Option<Box<Expr>>,
+                span: Span,
+            ) -> Option<Box<Expr>> {
+                match chain.next() {
+                    Some((condition, block)) => Some(Box::new(Expr::new(
+                        ExprData::If(
+                            Box::new(condition),
+                            Box::new(block),
+                            build_chain(chain, r#else, span.clone()),
+                        ),
+                        span,
+                    ))),
+                    None => r#else,
+                }
+            }
+
+            Expr::new(
+                ExprData::If(
+                    Box::new(condition),
+                    Box::new(block),
+                    build_chain(elifs.into_iter(), r#else, span),
+                ),
+                span,
+            )
         }
         Rule::object => 'mtch: {
             let mut object_pairs = primary.into_inner();
@@ -241,7 +292,19 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
     }
 }
 
-pub fn parse_block(block_pairs: Pairs<Rule>) -> (Vec<Stmt>, Option<Box<Expr>>) {
+pub fn parse_block(block: Pair<Rule>) -> Expr {
+    if block.as_rule() != Rule::block {
+        panic!(
+            "this should be a block, but is a {:?}\n{block:#?}",
+            block.as_rule(),
+        );
+    }
+    let span = Span::from(block.as_span().start()..block.as_span().end());
+    let (stmts, expr) = parse_block_data(block.into_inner());
+    Expr::new(ExprData::Block(stmts, expr), span)
+}
+
+pub fn parse_block_data(block_pairs: Pairs<Rule>) -> (Vec<Stmt>, Option<Box<Expr>>) {
     let mut expr = None;
     let stmts: Vec<Stmt> = block_pairs
         .map_while(|item| match item.as_rule() {

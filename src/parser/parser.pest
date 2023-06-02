@@ -49,10 +49,12 @@ postfix   = _{
     call_args
   | index
   | access
+  | call_self
 }
 index     =  { "[" ~ expr ~ "]" }
 call_args =  { "(" ~ expr? ~ ("," ~ expr)* ~ ","? ~ ")" }
 access    =  { "." ~ ident }
+call_self =  { ":" ~ ident ~ "(" ~ expr? ~ ("," ~ expr)* ~ ","? ~ ")" }
 
 primary   = _{
     "(" ~ expr ~ ")"
@@ -62,6 +64,7 @@ primary   = _{
   | true
   | false
   | none
+  | if
   | ident
   | float
   | integer
@@ -80,6 +83,9 @@ true      =  { "true" }
 false     =  { "false" }
 none      =  { "None" }
 list_lit  =  { "[" ~ expr? ~ ("," ~ expr)* ~ ","? ~ "]" }
+if        =  { "if" ~ expr ~ block ~ elif* ~ else? }
+elif      =  { "elif" ~ expr ~ block }
+else      =  { "else" ~ block }
 
 keyword = _{
     "fn"
@@ -91,6 +97,9 @@ keyword = _{
   | "and"
   | "None"
   | "as"
+  | "if"
+  | "elif"
+  | "else"
 }
 
 // this reads as:

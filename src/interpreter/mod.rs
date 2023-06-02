@@ -351,4 +351,20 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             self,
         )
     }
+
+    fn visit_if(
+        &mut self,
+        condition: &IIRExpr,
+        block: &IIRExpr,
+        r#else: Option<&IIRExpr>,
+    ) -> IntpControlFlow {
+        if visit_or_ret!(self, condition).is_truthy() {
+            self.visit_expr(block)
+        } else if let Some(r#else) = r#else {
+            self.visit_expr(r#else)
+        } else {
+            // oof
+            IntpControlFlow::Val(Value::None)
+        }
+    }
 }
