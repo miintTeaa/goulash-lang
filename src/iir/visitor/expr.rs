@@ -38,6 +38,7 @@ pub trait IIRExprVisitor<T> {
             }
             IIRExprData::Loop(block) => self.visit_loop(block, expr.span),
             IIRExprData::Break(brk_expr) => self.visit_break(brk_expr.as_deref(), expr.span),
+            IIRExprData::Return(ret_expr) => self.visit_return(ret_expr.as_deref(), expr.span),
         }
     }
 
@@ -74,4 +75,5 @@ pub trait IIRExprVisitor<T> {
     ) -> T;
     fn visit_loop(&mut self, block: &IIRExpr, span: Span) -> T;
     fn visit_break(&mut self, expr: Option<&IIRExpr>, span: Span) -> T;
+    fn visit_return(&mut self, expr: Option<&IIRExpr>, span: Span) -> T;
 }

@@ -11,9 +11,11 @@ use crate::{
         Ident,
     },
     iir::{
+        self,
         visitor::{IIRExprVisitor, IIRStmtVisitor},
         IIRExpr, IIRExprData,
     },
+    parse,
     span::Span,
     types::Type,
     value::Value,
@@ -30,7 +32,50 @@ impl Interpreter {
         };
 
         interpreter.scopes.declare(
-            id("print"),
+            id("__builtin__"),
+            Value::new_fn_raw(vec![id("builtin_name")], |interpreter: &mut Interpreter| {
+                let builtin_name = interpreter
+                    .scopes
+                    .find(&id("builtin_name"))
+                    .expect("should exist")
+                    .to_string();
+
+                let builtin_name = String::from("@") + &builtin_name;
+
+                match interpreter.scopes.find(&id(builtin_name)) {
+                    Some(v) => v.clone(),
+                    _ => Value::None,
+                }
+            }),
+        );
+
+        let std_src = include_str!("../std.gls");
+
+        interpreter.scopes.declare(
+            id("std"),
+            Value::new_fn(
+                vec![],
+                match iir::build(
+                    std_src,
+                    match parse(std_src) {
+                        Ok(o) => o,
+                        Err(e) => panic!("{e}"),
+                    },
+                ) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        for error in e {
+                            error.report("std", std_src);
+                        }
+                        panic!();
+                    }
+                },
+                None,
+            ),
+        );
+
+        interpreter.scopes.declare(
+            id("@print"),
             Value::new_fn_raw(vec![id("printed")], |interpreter: &mut Interpreter| {
                 let mut stdout = std::io::stdout().lock();
                 let printed = interpreter
@@ -65,7 +110,7 @@ impl Interpreter {
         );
 
         interpreter.scopes.declare(
-            id("exit"),
+            id("@exit"),
             Value::new_fn_raw(vec![id("exit_data")], |interpreter: &mut Interpreter| {
                 let value = interpreter
                     .scopes
@@ -387,6 +432,17 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
                 v @ IntpControlFlow::Ret(_) => v,
                 v @ IntpControlFlow::Brk(_) => v,
                 IntpControlFlow::Val(v) => IntpControlFlow::Brk(v),
+            },
+            None => IntpControlFlow::Brk(Value::None),
+        }
+    }
+
+    fn visit_return(&mut self, expr: Option<&IIRExpr>, _span: Span) -> IntpControlFlow {
+        match expr {
+            Some(v) => match self.visit_expr(v) {
+                v @ IntpControlFlow::Ret(_) => v,
+                v @ IntpControlFlow::Brk(_) => v,
+                IntpControlFlow::Val(v) => IntpControlFlow::Ret(v),
             },
             None => IntpControlFlow::Brk(Value::None),
         }

@@ -322,6 +322,14 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
             };
             Expr::new(ExprData::Break(expr), span)
         }
+        Rule::r#return => {
+            let mut return_pairs = primary.into_inner();
+            let expr = match return_pairs.next() {
+                Some(expr) => Some(Box::new(parse_expr(expr))),
+                None => None,
+            };
+            Expr::new(ExprData::Return(expr), span)
+        }
         rule => unreachable!("{rule:#?}"),
     }
 }

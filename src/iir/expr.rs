@@ -144,6 +144,10 @@ impl IIRExpr {
                     Some(expr) => Some(Box::new(IIRExpr::try_from(*expr, src)?)),
                     None => None,
                 }),
+                ExprData::Return(expr) => IIRExprData::Return(match expr {
+                    Some(expr) => Some(Box::new(IIRExpr::try_from(*expr, src)?)),
+                    None => None,
+                }),
             },
         })
     }
@@ -182,6 +186,7 @@ pub enum IIRExprData {
     If(Box<IIRExpr>, Box<IIRExpr>, Option<Box<IIRExpr>>),
     Loop(Box<IIRExpr>),
     Break(Option<Box<IIRExpr>>),
+    Return(Option<Box<IIRExpr>>),
     Var(Ident),
 }
 

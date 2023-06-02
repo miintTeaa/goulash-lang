@@ -1,0 +1,8 @@
+return obj Std {
+	print = fn printed {
+		__builtin__("print")(printed)
+	};
+	exit = fn exit_val {
+		__builtin__("exit")(exit_val)
+	};
+};

@@ -1,3 +1,6 @@
+let std = std();
+let print = std.print;
+let exit = std.exit;
 
 let println = fn x {
     print(x);

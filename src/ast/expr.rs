@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::Deref};
+use std::{fmt::Debug};
 
 use internment::ArcIntern;
 
@@ -104,6 +104,10 @@ impl Debug for Expr {
                 .debug_tuple(&format!("Expr:BREAK[{span}]"))
                 .field(expr)
                 .finish(),
+            ExprData::Return(expr) => f
+                .debug_tuple(&format!("Expr:RETURN[{span}]"))
+                .field(expr)
+                .finish(),
         }
     }
 }
@@ -129,6 +133,7 @@ pub enum ExprData {
     List(Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
     Break(Option<Box<Expr>>),
+    Return(Option<Box<Expr>>),
     Var(Ident),
     Error,
 }

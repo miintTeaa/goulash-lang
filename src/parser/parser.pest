@@ -72,6 +72,7 @@ primary   = _{
   | string
   | list_lit
   | break
+  | return
 }
 float     = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 integer   = @{ ASCII_DIGIT+ }
@@ -90,6 +91,7 @@ elif      =  { "elif" ~ expr ~ block }
 else      =  { "else" ~ block }
 loop      =  { "loop" ~ block }
 break     =  { "break" ~ expr? }
+return    =  { "return" ~ expr? }
 
 keyword = _{
     "fn"
@@ -106,6 +108,7 @@ keyword = _{
   | "else"
   | "loop"
   | "break"
+  | "return"
 }
 
 // this reads as:
