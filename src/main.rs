@@ -1,3 +1,5 @@
+use std::{fs, process::ExitCode};
+
 use goulash::{
     iir::{self, visitor::IIRStmtVisitor},
     interpreter::{Interpreter, IntpControlFlow},
@@ -5,69 +7,53 @@ use goulash::{
     value::Value,
 };
 
-fn main() {
-    let src = String::from(
-        r#"
-    let println = fn x {
-        print(x);
-        print("\n");
-    };
-    let test = fn x { print("" + x + " "); x };
-    println("1 2 3 4 11");
-    let x = test(1) + test(2) * test(3) + test(4);
-    print(x);
-    println("");
-    let prev = obj Test1 {
-        shout2 = fn a, b {
-            print("shouting " + a);
-            println(" and " + b);
-        };
-    };
-    let test2 = obj Test2 as prev {
-        shout3 = fn a, b, c {
-            print("shouting " + a);
-            print(" and " + b);
-            println(" and also " + c)
-        };
-        a = 2;
-    };
-    // these are parsing tests //
-    obj Test3 as test2 {};
-    obj Test4 {};
-    /////////////////////////////
-    test2.shout3("hello " + "world", false, true);
-    test2.shout2("hi", None);
-    println("you should see two foos and no bars");
-    false or print("foo ");
-    true or print("bar ");
-    true and print("foo ");
-    false and print("bar ");
-    println("");
-    "#,
-    );
-    let src = &src;
+fn main() -> ExitCode {
+    let mut args = std::env::args();
+    let program_name = args
+        .next()
+        .expect("first argument isn't program name; this is a bug in your system");
 
-    let stmts = match parse(src) {
+    let src;
+    if let Some(arg) = args.next() {
+        src = match fs::read_to_string(arg) {
+            Ok(src) => src,
+            Err(e) => {
+                eprintln!("{e}");
+                return ExitCode::FAILURE;
+            }
+        };
+    } else {
+        eprintln!("Usage: {program_name} <filename>");
+        return ExitCode::FAILURE;
+    }
+
+    let stmts = match parse(&src) {
         Ok(stmts) => stmts,
         Err(e) => {
-            println!("{e}");
-            return;
+            eprintln!("{e}");
+            return ExitCode::FAILURE;
         }
     };
 
-    let mut interpreter = Interpreter::new(src);
-    match iir::build(src, stmts) {
+    let mut interpreter = Interpreter::new(&src);
+    match iir::build(&src, stmts) {
         Ok(iir) => {
             for iir_stmt in &iir {
                 match interpreter.visit_stmt(iir_stmt) {
                     IntpControlFlow::Ret(Value::None) => {
                         eprintln!("Internal error");
-                        break;
+                        return ExitCode::FAILURE;
                     }
                     _ => (),
                 }
             }
+            ExitCode::SUCCESS
         }
-        Err(_) => todo!(),
+        Err(e) => {
+            for error in e {
+                eprintln!("{error}");
+            }
+            return ExitCode::FAILURE;
+        }
     }
 }
