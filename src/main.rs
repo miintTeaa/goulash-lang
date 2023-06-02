@@ -37,7 +37,7 @@ fn main() -> ExitCode {
         }
     };
 
-    let mut interpreter = Interpreter::new(&src);
+    let mut interpreter = Interpreter::new();
     match iir::build(&src, stmts) {
         Ok(iir) => {
             for iir_stmt in &iir {

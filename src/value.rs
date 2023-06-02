@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::{
+    ast::{id, Ident},
     iir::{
         visitor::{IIRExprVisitor, IIRStmtVisitor},
         IIRExpr, IIRStmt,
@@ -16,16 +17,16 @@ use crate::{
 
 #[derive(Debug)]
 pub struct ObjData {
-    name: String,
+    name: Ident,
     supers: Vec<Rc<RefCell<ObjData>>>,
-    fields: HashMap<String, Value>,
+    fields: HashMap<Ident, Value>,
 }
 
 impl ObjData {
     pub fn new(
-        name: String,
+        name: Ident,
         supers: Vec<Rc<RefCell<ObjData>>>,
-        fields: HashMap<String, Value>,
+        fields: HashMap<Ident, Value>,
     ) -> Self {
         Self {
             name,
@@ -34,12 +35,12 @@ impl ObjData {
         }
     }
 
-    pub fn get_field(&self, ident: &str) -> Option<Value> {
-        match self.fields.get(ident) {
+    pub fn get_field(&self, ident: Ident) -> Option<Value> {
+        match self.fields.get(&ident) {
             Some(field) => Some(field.clone()),
             None => {
                 for sup in &self.supers {
-                    match sup.borrow().get_field(ident) {
+                    match sup.borrow().get_field(ident.clone()) {
                         Some(field) => return Some(field),
                         None => {}
                     }
@@ -49,12 +50,12 @@ impl ObjData {
         }
     }
 
-    pub fn set_field(&mut self, ident: &str, value: Value) -> Option<Value> {
-        match self.fields.contains_key(ident) {
-            true => self.fields.insert(ident.to_owned(), value),
+    pub fn set_field(&mut self, ident: Ident, value: Value) -> Option<Value> {
+        match self.fields.contains_key(&ident) {
+            true => self.fields.insert(ident.clone(), value),
             false => {
                 for sup in &self.supers {
-                    match sup.borrow_mut().set_field(ident, value.clone()) {
+                    match sup.borrow_mut().set_field(ident.clone(), value.clone()) {
                         Some(field) => return Some(field),
                         None => {}
                     }
@@ -68,12 +69,12 @@ impl ObjData {
 pub type FunctionSignature = Box<dyn Fn(&mut Interpreter) -> Value>;
 
 pub struct FunctionData {
-    args: Vec<String>,
+    args: Vec<Ident>,
     callback: FunctionSignature,
 }
 
 impl FunctionData {
-    pub fn new(args: Vec<String>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
+    pub fn new(args: Vec<Ident>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
         let callback = Box::new(move |interpreter: &mut Interpreter| {
             for stmt in &stmts {
                 match interpreter.visit_stmt(stmt) {
@@ -91,7 +92,7 @@ impl FunctionData {
         Self { args, callback }
     }
 
-    pub fn new_raw(args: Vec<String>, callback: FunctionSignature) -> Self {
+    pub fn new_raw(args: Vec<Ident>, callback: FunctionSignature) -> Self {
         Self { args, callback }
     }
 
@@ -138,7 +139,7 @@ impl Value {
     pub const TRUE: Value = Value::Bool(true);
     pub const FALSE: Value = Value::Bool(false);
 
-    pub fn new_fn(args: Vec<String>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
+    pub fn new_fn(args: Vec<Ident>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
         Self::Fn(Rc::new(FunctionData::new(args, stmts, ending_expr)))
     }
 
@@ -151,31 +152,33 @@ impl Value {
     }
 
     pub fn new_fn_raw(
-        args: Vec<String>,
+        args: Vec<Ident>,
         callback: impl Fn(&mut Interpreter) -> Value + 'static,
     ) -> Self {
         Self::Fn(Rc::new(FunctionData::new_raw(args, Box::new(callback))))
     }
 
     pub fn new_obj(
-        name: String,
+        name: Ident,
         supers: Vec<Rc<RefCell<ObjData>>>,
-        fields: HashMap<String, Value>,
+        fields: HashMap<Ident, Value>,
     ) -> Self {
         Self::Obj(Rc::new(RefCell::new(ObjData::new(name, supers, fields))))
     }
 
-    pub fn apply_suffix(&self, s: &mut String) {
+    pub fn apply_suffix(&self, s: &str) -> String {
+        let mut s = s.to_string();
         match self {
-            Value::Int(_) => *s += "_int",
-            Value::Float(_) => *s += "_float",
-            Value::Str(_) => *s += "_str",
-            Value::Bool(_) => *s += "_bool",
-            Value::Fn(_) => *s += "_fn",
+            Value::Int(_) => s += "_int",
+            Value::Float(_) => s += "_float",
+            Value::Str(_) => s += "_str",
+            Value::Bool(_) => s += "_bool",
+            Value::Fn(_) => s += "_fn",
             Value::Obj(o) => s.extend(["_", &o.borrow().name]),
-            Value::List(_) => *s += "_list",
-            Value::None => *s += "_none",
+            Value::List(_) => s += "_list",
+            Value::None => s += "_none",
         };
+        s
     }
 
     pub fn get_type(&self) -> Type {
@@ -207,7 +210,7 @@ impl Value {
                 }
             }
             (Value::Obj(obj), index) => {
-                let f = match obj.borrow().get_field("index_by") {
+                let f = match obj.borrow().get_field(id(String::from("index_by"))) {
                     Some(Value::Fn(f)) => f,
                     _ => return IntpControlFlow::Ret(Value::None),
                 };
@@ -240,7 +243,7 @@ impl Value {
                 IntpControlFlow::Val(Value::None)
             }
             (Value::Obj(obj), index) => {
-                let f = match obj.borrow().get_field("index_by_set") {
+                let f = match obj.borrow().get_field(id("index_by_set")) {
                     Some(Value::Fn(f)) => f,
                     _ => return IntpControlFlow::Ret(Value::None),
                 };
@@ -276,7 +279,7 @@ impl Value {
             Value::Float(f) => IntpControlFlow::Val(Value::Int(*f as i32)),
             Value::Str(s) => str_to_int(s),
             Value::Bool(b) => IntpControlFlow::Val(Value::Int(*b as i32)),
-            Value::Obj(o) => match o.borrow().get_field("to_int") {
+            Value::Obj(o) => match o.borrow().get_field(id("to_int")) {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
                 _ => IntpControlFlow::Ret(Value::None),
             },
@@ -341,7 +344,7 @@ macro_rules! impl_op {
                         })
                     }
                     (Value::Obj(o), rhs) => {
-                        match o.borrow().get_field($op_obj_fname) {
+                        match o.borrow().get_field(id($op_obj_fname)) {
                             Some(Value::Fn(f)) => {
                                 f.call(vec![Value::Obj(o.clone()), rhs], interpreter)
                             }
@@ -368,7 +371,7 @@ macro_rules! impl_op {
                         IntpControlFlow::Val(Value::Bool(i1 $op_symbol i2))
                     }
                     (Value::Obj(o), other) | (other, Value::Obj(o)) => {
-                        match o.borrow().get_field($op_obj_fname) {
+                        match o.borrow().get_field(id($op_obj_fname)) {
                             Some(Value::Fn(f)) => {
                                 f.call(vec![Value::Obj(o.clone()), other], interpreter)
                             }
@@ -395,7 +398,7 @@ impl Value {
                   IntpControlFlow::Val(Value::Int(i1.wrapping_fn(i2)))
                 })
             }
-            (Value::Obj(o), rhs) => match o.borrow().get_field("op_add") {
+            (Value::Obj(o), rhs) => match o.borrow().get_field(id("op_add")) {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone()), rhs], interpreter),
                 _ => IntpControlFlow::Ret(Value::None),
             },
@@ -423,7 +426,7 @@ impl Value {
         match self {
             Value::Int(i) => IntpControlFlow::Val(Value::Int(-i)),
             Value::Float(f) => IntpControlFlow::Val(Value::Float(-f)),
-            Value::Obj(o) => match o.borrow_mut().get_field("op_neg") {
+            Value::Obj(o) => match o.borrow_mut().get_field(id("op_neg")) {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
                 _ => IntpControlFlow::Ret(Value::None),
             },
@@ -433,9 +436,9 @@ impl Value {
 
     pub fn not(self, interpreter: &mut Interpreter) -> IntpControlFlow {
         match self {
-            Value::Obj(o) => match o.borrow().get_field("op_not") {
+            Value::Obj(o) => match o.borrow().get_field(id("op_not")) {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
-                _ => match o.borrow().get_field("is_truthy") {
+                _ => match o.borrow().get_field(id("is_truthy")) {
                     Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
                     _ => IntpControlFlow::Val(Value::TRUE),
                 },

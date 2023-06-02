@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprData, LiteralKind,
+        Expr, ExprData, Ident, LiteralKind,
     },
     error::{LangError, LangErrorData},
     span::Span,
@@ -62,7 +62,7 @@ impl IIRExpr {
                 ExprData::Lit(LiteralKind::True) => IIRExprData::Const(Value::TRUE),
                 ExprData::Lit(LiteralKind::False) => IIRExprData::Const(Value::FALSE),
                 ExprData::Lit(LiteralKind::None) => IIRExprData::Const(Value::None),
-                ExprData::Var => IIRExprData::Var,
+                ExprData::Var(ident) => IIRExprData::Var(ident),
                 ExprData::Error => panic!("tried to convert ExprData::Error to IIRExprData"),
                 ExprData::Block(old_stmts, old_expr) => {
                     let mut stmts = Vec::new();
@@ -84,13 +84,7 @@ impl IIRExpr {
                         Some(expr) => Some(IIRExpr::try_from(*expr, src)?),
                         None => None,
                     };
-                    IIRExprData::Const(Value::new_fn(
-                        args.into_iter()
-                            .map(|span| src[span.range()].to_owned())
-                            .collect(),
-                        iir_stmts,
-                        iir_expr,
-                    ))
+                    IIRExprData::Const(Value::new_fn(args, iir_stmts, iir_expr))
                 }
                 ExprData::Call(callable, args) => {
                     let mut iir_args = Vec::new();
@@ -154,10 +148,10 @@ impl IIRExpr {
         }
     }
 
-    pub fn new_var(span: Span) -> Self {
+    pub fn new_var(ident: Ident, span: Span) -> Self {
         Self {
             span,
-            data: IIRExprData::Var,
+            data: IIRExprData::Var(ident),
         }
     }
 
@@ -171,15 +165,15 @@ pub enum IIRExprData {
     UnOp(UnaryOp, Box<IIRExpr>),
     Block(Vec<IIRStmt>, Option<Box<IIRExpr>>),
     Call(Box<IIRExpr>, Vec<IIRExpr>),
-    Class(Span, Vec<IIRExpr>, Vec<(Span, IIRExpr)>),
+    Class(Ident, Vec<IIRExpr>, Vec<(Ident, IIRExpr)>),
     List(Vec<IIRExpr>),
     Const(Value),
-    AccessSet(Box<IIRExpr>, Span, Box<IIRExpr>),
-    Access(Box<IIRExpr>, Span),
+    AccessSet(Box<IIRExpr>, Ident, Box<IIRExpr>),
+    Access(Box<IIRExpr>, Ident),
     IndexSet(Box<IIRExpr>, Box<IIRExpr>, Box<IIRExpr>),
     Index(Box<IIRExpr>, Box<IIRExpr>),
     If(Box<IIRExpr>, Box<IIRExpr>, Option<Box<IIRExpr>>),
-    Var,
+    Var(Ident),
 }
 
 fn process_escapes(s: &str) -> String {

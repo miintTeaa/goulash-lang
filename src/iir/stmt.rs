@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Stmt, StmtData},
+    ast::{Ident, Stmt, StmtData},
     error::LangError,
     span::Span,
 };
@@ -16,11 +16,7 @@ impl IIRStmt {
         Ok(Self {
             span: other.span,
             data: match other.data {
-                StmtData::Let(ident_span, expr) => {
-                    let ident = match ident_span {
-                        Ok(sp) => sp,
-                        Err(sp) => panic!("Tried to build IIR with error at {sp}"),
-                    };
+                StmtData::Let(ident, expr) => {
                     IIRStmtData::Let(ident, IIRExpr::try_from(expr, src)?)
                 }
                 StmtData::Expr(expr) => IIRStmtData::Expr(IIRExpr::try_from(expr, src)?),
@@ -46,6 +42,6 @@ impl IIRStmt {
 }
 
 pub enum IIRStmtData {
-    Let(Span, IIRExpr),
+    Let(Ident, IIRExpr),
     Expr(IIRExpr),
 }

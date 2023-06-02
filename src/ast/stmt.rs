@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::span::Span;
 
-use super::expr::Expr;
+use super::{expr::Expr, Ident};
 
 pub struct Stmt {
     pub span: Span,
@@ -10,7 +10,7 @@ pub struct Stmt {
 }
 
 impl Stmt {
-    pub fn new_let(ident: Result<Span, Span>, rhs: Expr, span: Span) -> Self {
+    pub fn new_let(ident: Ident, rhs: Expr, span: Span) -> Self {
         Self {
             span,
             data: StmtData::Let(ident, rhs),
@@ -55,7 +55,7 @@ impl Debug for Stmt {
 
 #[derive(Debug)]
 pub enum StmtData {
-    Let(Result<Span, Span>, Expr),
+    Let(Ident, Expr),
     Expr(Expr),
     Error,
 }

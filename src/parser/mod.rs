@@ -5,6 +5,7 @@ use pest::{
 
 use crate::{
     ast::{
+        id,
         ops::{BinaryOp, UnaryOp},
         Expr, ExprData, LiteralKind, Stmt,
     },
@@ -45,12 +46,9 @@ pub fn parse_stmt(stmt: Pair<Rule>) -> Stmt {
                 Span::from(inner_span.start()..inner_span.end())
             };
             let mut let_pairs = inner.into_inner();
-            let ident_span = {
-                let ident_span = let_pairs.next().unwrap().as_span();
-                Span::from(ident_span.start()..ident_span.end())
-            };
+            let ident = id(let_pairs.next().unwrap().as_str().to_string());
             let expr = parse_expr(let_pairs.next().unwrap());
-            Stmt::new_let(Ok(ident_span), expr, span)
+            Stmt::new_let(ident, expr, span)
         }
         rule => unreachable!("{:?}", rule),
     }
@@ -119,11 +117,8 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
             let span = expr.span.to(op.as_span().end());
             let data = match op.as_rule() {
                 Rule::access => {
-                    let ident_span = op.into_inner().next().unwrap().as_span();
-                    ExprData::Access(
-                        Box::new(expr),
-                        Span::from(ident_span.start()..ident_span.end()),
-                    )
+                    let ident = id(op.into_inner().next().unwrap().as_str().to_string());
+                    ExprData::Access(Box::new(expr), ident)
                 }
                 Rule::call_args => ExprData::Call(
                     Box::new(expr),
@@ -142,22 +137,23 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
                     // idents as spans
 
                     let mut call_self_pairs = op.into_inner();
-                    let ident_span = {
-                        let span = call_self_pairs.next().unwrap().as_span();
-                        Span::from(span.start()..span.end())
-                    };
+                    let ident_pair = call_self_pairs.next().unwrap();
+                    let func_ident = id(ident_pair.as_str().to_string());
+                    let call_bind_name = id(String::from("@CALL_BIND"));
 
-                    let let_bind = Stmt::new_let(Ok(ident_span), expr, span);
+                    let expr_span = expr.span;
+
+                    let let_bind = Stmt::new_let(call_bind_name.clone(), expr, span);
 
                     let access = Expr::new(
                         ExprData::Access(
-                            Box::new(Expr::new(ExprData::Var, ident_span)),
-                            ident_span,
+                            Box::new(Expr::new(ExprData::Var(call_bind_name.clone()), expr_span)),
+                            func_ident,
                         ),
                         span,
                     );
 
-                    let mut args = vec![Expr::new(ExprData::Var, ident_span)];
+                    let mut args = vec![Expr::new(ExprData::Var(call_bind_name), expr_span)];
                     args.extend(call_self_pairs.map(|p| parse_expr(p)));
 
                     let call = Expr::new(ExprData::Call(Box::new(access), args), span);
@@ -184,7 +180,7 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
         Rule::r#true => Expr::new_lit(LiteralKind::True, span),
         Rule::r#false => Expr::new_lit(LiteralKind::False, span),
         Rule::none => Expr::new_lit(LiteralKind::None, span),
-        Rule::ident => Expr::new(ExprData::Var, span),
+        Rule::ident => Expr::new(ExprData::Var(id(primary.as_str().to_string())), span),
         Rule::float => Expr::new_lit(LiteralKind::Float, span),
         Rule::integer => Expr::new_lit(LiteralKind::Int, span),
         Rule::string => Expr::new_lit(LiteralKind::Str, span),
@@ -208,10 +204,7 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
                 Rule::block => (stmts, expr) = parse_block_data(first.into_inner()),
                 Rule::ident_lst => {
                     for arg in first.into_inner() {
-                        args.push({
-                            let arg_span = arg.as_span();
-                            Span::from(arg_span.start()..arg_span.end())
-                        });
+                        args.push(id(arg.as_str().to_string()));
                     }
                     (stmts, expr) = parse_block_data(func_pairs.next().unwrap().into_inner());
                 }
@@ -273,30 +266,27 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
         }
         Rule::object => 'mtch: {
             let mut object_pairs = primary.into_inner();
-            let name_span = {
-                let name = object_pairs.next().unwrap().as_span();
-                Span::from(name.start()..name.end())
-            };
+            let name = id(object_pairs.next().unwrap().as_str().to_string());
             let mut fields = Vec::new();
             let mut supers = Vec::new();
 
             let next = match object_pairs.next() {
                 Some(next) => next,
-                None => break 'mtch Expr::new(ExprData::Class(name_span, supers, fields), span),
+                None => break 'mtch Expr::new(ExprData::Class(name, supers, fields), span),
             };
 
             match next.as_rule() {
                 Rule::ident_lst => {
                     for ident in next.into_inner() {
                         supers.push(Expr::new(
-                            ExprData::Var,
+                            ExprData::Var(id(ident.as_str().to_owned())),
                             Span::from(ident.as_span().start()..ident.as_span().end()),
                         ));
                     }
 
                     loop {
                         let ident = match object_pairs.next() {
-                            Some(next) => Span::from(next.as_span().start()..next.as_span().end()),
+                            Some(next_ident) => id(next_ident.as_str().to_string()),
                             None => break,
                         };
                         let expr = parse_expr(object_pairs.next().unwrap());
@@ -304,14 +294,12 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
                     }
                 }
                 Rule::ident => {
-                    let mut ident = Span::from(next.as_span().start()..next.as_span().end());
+                    let mut ident = id(next.as_str().to_string());
                     loop {
                         let expr = parse_expr(object_pairs.next().unwrap());
                         fields.push((ident, expr));
                         ident = match object_pairs.next() {
-                            Some(ident) => {
-                                Span::from(ident.as_span().start()..ident.as_span().end())
-                            }
+                            Some(next_ident) => id(next_ident.as_str().to_string()),
                             None => break,
                         };
                     }
@@ -319,7 +307,7 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
                 _ => unreachable!(),
             };
 
-            Expr::new(ExprData::Class(name_span, supers, fields), span)
+            Expr::new(ExprData::Class(name, supers, fields), span)
         }
         rule => unreachable!("{rule:#?}"),
     }

@@ -3,9 +3,11 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+use crate::ast::Ident;
+
 #[derive(Debug)]
 pub struct Scope<T> {
-    variables: HashMap<String, T>,
+    variables: HashMap<Ident, T>,
 }
 
 impl<T> Scope<T> {
@@ -15,20 +17,20 @@ impl<T> Scope<T> {
         }
     }
 
-    pub fn declare(&mut self, s: String, val: T) {
+    pub fn declare(&mut self, s: Ident, val: T) {
         self.variables.insert(s, val);
     }
 
-    pub fn delete(&mut self, ident: &str) -> Option<(String, T)> {
-        self.variables.remove_entry(ident)
+    pub fn delete(&mut self, ident: &Ident) -> Option<(Ident, T)> {
+        self.variables.remove_entry(&ident)
     }
 
-    pub fn get(&self, ident: &str) -> Option<&T> {
-        self.variables.get(ident)
+    pub fn get(&self, ident: &Ident) -> Option<&T> {
+        self.variables.get(&ident)
     }
 
-    pub fn get_mut(&mut self, ident: &str) -> Option<&mut T> {
-        self.variables.get_mut(ident)
+    pub fn get_mut(&mut self, ident: &Ident) -> Option<&mut T> {
+        self.variables.get_mut(&ident)
     }
 }
 
@@ -44,14 +46,14 @@ impl<T> ScopeStack<T> {
         }
     }
 
-    pub fn declare(&mut self, s: String, val: T) {
+    pub fn declare(&mut self, s: Ident, val: T) {
         self.scopes
             .last_mut()
             .expect("should have scope here")
             .declare(s, val)
     }
 
-    pub fn find(&self, ident: &str) -> Option<&T> {
+    pub fn find(&self, ident: &Ident) -> Option<&T> {
         for scope in self.scopes.iter().rev() {
             match scope.get(ident) {
                 Some(v) => return Some(v),
@@ -61,7 +63,7 @@ impl<T> ScopeStack<T> {
         None
     }
 
-    pub fn find_mut(&mut self, ident: &str) -> Option<&mut T> {
+    pub fn find_mut(&mut self, ident: &Ident) -> Option<&mut T> {
         for scope in self.scopes.iter_mut().rev() {
             match scope.get_mut(ident) {
                 Some(v) => return Some(v),
@@ -71,7 +73,7 @@ impl<T> ScopeStack<T> {
         None
     }
 
-    pub fn find_with_scope(&self, ident: &str) -> Option<(&T, usize)> {
+    pub fn find_with_scope(&self, ident: &Ident) -> Option<(&T, usize)> {
         for (scope_id, scope) in self.scopes.iter().enumerate().rev() {
             match scope.get(ident) {
                 Some(v) => return Some((v, scope_id)),
@@ -81,7 +83,7 @@ impl<T> ScopeStack<T> {
         None
     }
 
-    pub fn find_with_scope_mut(&mut self, ident: &str) -> Option<(&mut T, usize)> {
+    pub fn find_with_scope_mut(&mut self, ident: &Ident) -> Option<(&mut T, usize)> {
         for (scope_id, scope) in self.scopes.iter_mut().enumerate().rev() {
             match scope.get_mut(ident) {
                 Some(v) => return Some((v, scope_id)),

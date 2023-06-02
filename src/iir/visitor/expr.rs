@@ -1,5 +1,8 @@
 use crate::{
-    ast::ops::{BinaryOp, UnaryOp},
+    ast::{
+        ops::{BinaryOp, UnaryOp},
+        Ident,
+    },
     iir::{IIRExpr, IIRExprData, IIRStmt},
     span::Span,
     value::Value,
@@ -11,19 +14,19 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::Op(op, lhs, rhs) => self.visit_binary_op(*op, lhs, rhs, expr.span),
             IIRExprData::UnOp(op, operand) => self.visit_unary_op(*op, operand, expr.span),
             IIRExprData::Const(val) => self.visit_const(val, expr.span),
-            IIRExprData::Var => self.visit_var(expr.span),
+            IIRExprData::Var(ident) => self.visit_var(ident.clone(), expr.span),
             IIRExprData::Block(stmts, last_expr) => {
                 self.visit_block(stmts, last_expr.as_deref(), expr.span)
             }
             IIRExprData::Call(expr, args) => self.visit_call(expr, args, expr.span),
             IIRExprData::Class(name, supers, fields) => {
-                self.visit_class(*name, &*supers, &*fields, expr.span)
+                self.visit_class(name.clone(), &*supers, &*fields, expr.span)
             }
             IIRExprData::Access(expr, access_ident) => {
-                self.visit_access(expr, *access_ident, expr.span)
+                self.visit_access(expr, access_ident.clone(), expr.span)
             }
             IIRExprData::AccessSet(lhs, access_ident, rhs) => {
-                self.visit_access_set(lhs, *access_ident, rhs, expr.span)
+                self.visit_access_set(lhs, access_ident.clone(), rhs, expr.span)
             }
             IIRExprData::List(exprs) => self.visit_list(exprs),
             IIRExprData::Index(expr, index) => self.visit_index(expr, index),
@@ -31,10 +34,10 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::If(condition, block, r#else) => {
                 self.visit_if(condition, block, r#else.as_deref())
             }
-        }   
+        }
     }
 
-    fn visit_var(&mut self, span: Span) -> T;
+    fn visit_var(&mut self, ident: Ident, span: Span) -> T;
     fn visit_const(&mut self, val: &Value, span: Span) -> T;
     fn visit_binary_op(&mut self, op: BinaryOp, lhs: &IIRExpr, rhs: &IIRExpr, span: Span) -> T;
     fn visit_unary_op(&mut self, op: UnaryOp, operand: &IIRExpr, span: Span) -> T;
@@ -42,16 +45,16 @@ pub trait IIRExprVisitor<T> {
     fn visit_call(&mut self, expr: &IIRExpr, args: &[IIRExpr], span: Span) -> T;
     fn visit_class(
         &mut self,
-        name: Span,
+        name: Ident,
         supers: &[IIRExpr],
-        fields: &[(Span, IIRExpr)],
+        fields: &[(Ident, IIRExpr)],
         span: Span,
     ) -> T;
-    fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, span: Span) -> T;
+    fn visit_access(&mut self, expr: &IIRExpr, access_ident: Ident, span: Span) -> T;
     fn visit_access_set(
         &mut self,
         lhs: &IIRExpr,
-        access_ident: Span,
+        access_ident: Ident,
         rhs: &IIRExpr,
         span: Span,
     ) -> T;

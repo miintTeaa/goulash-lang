@@ -1,4 +1,6 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Deref};
+
+use internment::ArcIntern;
 
 use crate::span::Span;
 
@@ -48,8 +50,8 @@ impl Debug for Expr {
                 .field(&expr)
                 .finish(),
             ExprData::Lit(val) => write!(f, "Expr:LITERAL[{span}]({val:?})"),
-            ExprData::Var => {
-                write!(f, "Expr:VAR[{span}]")
+            ExprData::Var(ident) => {
+                write!(f, "Expr:VAR[{span}]({ident})")
             }
             ExprData::Error => write!(f, "Expr:ERROR[{span}]"),
             ExprData::Block(stmts, expr) => f
@@ -98,6 +100,12 @@ impl Debug for Expr {
     }
 }
 
+pub type Ident = ArcIntern<String>;
+
+pub fn id<'a>(s: impl AsRef<str>) -> ArcIntern<String> {
+    ArcIntern::from_ref(s.as_ref())
+}
+
 #[derive(Debug)]
 pub enum ExprData {
     Op(BinaryOp, Box<Expr>, Box<Expr>),
@@ -105,13 +113,13 @@ pub enum ExprData {
     Call(Box<Expr>, Vec<Expr>),
     Lit(LiteralKind),
     Block(Vec<Stmt>, Option<Box<Expr>>),
-    Class(Span, Vec<Expr>, Vec<(Span, Expr)>),
-    Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
+    Class(Ident, Vec<Expr>, Vec<(Ident, Expr)>),
+    Fn(Vec<Ident>, Vec<Stmt>, Option<Box<Expr>>),
     If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
-    Access(Box<Expr>, Span),
+    Access(Box<Expr>, Ident),
     List(Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
-    Var,
+    Var(Ident),
     Error,
 }
 

@@ -2,10 +2,15 @@ mod scopes;
 
 use std::{collections::HashMap, io::Write, process::exit};
 
+use internment::ArcIntern;
 use scopes::ScopeStack;
 
 use crate::{
-    ast::ops::{BinaryOp, UnaryOp},
+    ast::{
+        id,
+        ops::{BinaryOp, UnaryOp},
+        Ident,
+    },
     iir::{
         visitor::{IIRExprVisitor, IIRStmtVisitor},
         IIRExpr, IIRExprData,
@@ -15,72 +20,67 @@ use crate::{
     value::Value,
 };
 
-pub struct Interpreter<'src> {
+pub struct Interpreter {
     scopes: ScopeStack<Value>,
-    src: &'src str,
 }
 
-impl<'src> Interpreter<'src> {
-    pub fn new(src: &'src str) -> Self {
+impl Interpreter {
+    pub fn new() -> Self {
         let mut interpreter = Self {
             scopes: ScopeStack::new(),
-            src,
         };
 
         interpreter.scopes.declare(
-            "print".to_owned(),
-            Value::new_fn_raw(
-                vec!["printed".to_owned()],
-                |interpreter: &mut Interpreter| {
-                    let mut stdout = std::io::stdout().lock();
-                    let printed = interpreter.scopes.find("printed").expect("should exist");
-                    let buffer = format!("{printed}");
-                    let mut buffer = buffer.as_bytes();
-                    let mut written = 0;
-                    loop {
-                        match stdout.write(buffer) {
-                            Ok(new_written) => {
-                                written += new_written;
-                                if written >= buffer.len() {
-                                    break;
-                                }
-                                buffer = &buffer[new_written..];
+            id("print"),
+            Value::new_fn_raw(vec![id("printed")], |interpreter: &mut Interpreter| {
+                let mut stdout = std::io::stdout().lock();
+                let printed = interpreter
+                    .scopes
+                    .find(&id("printed"))
+                    .expect("should exist");
+                let buffer = format!("{printed}");
+                let mut buffer = buffer.as_bytes();
+                let mut written = 0;
+                loop {
+                    match stdout.write(buffer) {
+                        Ok(new_written) => {
+                            written += new_written;
+                            if written >= buffer.len() {
+                                break;
                             }
-                            Err(e) => match e.kind() {
-                                std::io::ErrorKind::Interrupted => {
-                                    continue;
-                                }
-                                _ => return Value::FALSE,
-                            },
+                            buffer = &buffer[new_written..];
                         }
+                        Err(e) => match e.kind() {
+                            std::io::ErrorKind::Interrupted => {
+                                continue;
+                            }
+                            _ => return Value::FALSE,
+                        },
                     }
-                    match stdout.flush() {
-                        Ok(_) => Value::TRUE,
-                        Err(_) => Value::FALSE,
-                    }
-                },
-            ),
+                }
+                match stdout.flush() {
+                    Ok(_) => Value::TRUE,
+                    Err(_) => Value::FALSE,
+                }
+            }),
         );
 
         interpreter.scopes.declare(
-            "exit".to_owned(),
-            Value::new_fn_raw(
-                vec!["exit_data".to_owned()],
-                |interpreter: &mut Interpreter| {
-                    let value = interpreter
-                        .scopes
-                        .find_mut("exit_data")
-                        .expect("should exist")
-                        .clone();
-                    match value.to_int(interpreter) {
-                        IntpControlFlow::Val(Value::Int(i)) => exit(i),
-                        _ => {
-                            eprintln!("Internal error");
-                            exit(1)
-                        }
+            id("exit"),
+            Value::new_fn_raw(vec![id("exit_data")], |interpreter: &mut Interpreter| {
+                let value = interpreter
+                    .scopes
+                    .find_mut(&id("exit_data"))
+                    .expect("should exist")
+                    .clone();
+                match value.to_int(interpreter) {
+                    IntpControlFlow::Val(Value::Int(i)) => exit(i),
+                    _ => {
+                        eprintln!("Internal error");
+                        exit(1)
                     }
-                },
-            ),
+                }
+            }),
         );
 
         interpreter
@@ -119,22 +119,22 @@ pub enum IntpControlFlow {
     Val(Value),
 }
 
-impl<'src> IIRStmtVisitor<IntpControlFlow> for Interpreter<'src> {
+impl IIRStmtVisitor<IntpControlFlow> for Interpreter {
     fn visit_expr_stmt(&mut self, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         visit_or_ret!(self, expr);
         IntpControlFlow::Val(Value::None)
     }
 
-    fn visit_let(&mut self, ident: Span, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
+    fn visit_let(&mut self, ident: &Ident, expr: &IIRExpr, _span: Span) -> IntpControlFlow {
         let val = visit_or_ret!(self, expr);
-        self.scopes.declare(self.src[ident.range()].to_owned(), val);
+        self.scopes.declare(ident.clone(), val);
         IntpControlFlow::Val(Value::None)
     }
 }
 
-impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
-    fn visit_var(&mut self, span: Span) -> IntpControlFlow {
-        match self.scopes.find(&self.src[span.range()]) {
+impl IIRExprVisitor<IntpControlFlow> for Interpreter {
+    fn visit_var(&mut self, ident: Ident, _span: Span) -> IntpControlFlow {
+        match self.scopes.find(&ident) {
             Some(val) => IntpControlFlow::Val(val.clone()),
             None => IntpControlFlow::Ret(Value::None),
         }
@@ -190,9 +190,8 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                 }
             }
             BinaryOp::Assign => match lhs.data() {
-                IIRExprData::Var => {
+                IIRExprData::Var(ident) => {
                     let rhs = visit_or_ret!(self, rhs);
-                    let ident = &self.src[lhs.span.range()];
                     let (old_val, scope_id) = match self.scopes.find_with_scope_mut(ident) {
                         Some(v) => v,
                         None => return IntpControlFlow::Val(Value::None),
@@ -202,11 +201,10 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
                     if rhs_type == Type::None || rhs_type == old_type {
                         *old_val = rhs;
                     } else if rhs_type != old_type {
-                        let (mut name, _) = self.scopes[scope_id]
+                        let (name, _) = self.scopes[scope_id]
                             .delete(ident)
                             .expect("should still exist");
-                        rhs.apply_suffix(&mut name);
-                        self.scopes[scope_id].declare(name, rhs)
+                        self.scopes[scope_id].declare(id(rhs.apply_suffix(&name)), rhs)
                     }
                     IntpControlFlow::Val(Value::None)
                 }
@@ -268,16 +266,16 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
 
     fn visit_class(
         &mut self,
-        name: Span,
+        name: Ident,
         iir_supers: &[IIRExpr],
-        iir_fields: &[(Span, IIRExpr)],
+        iir_fields: &[(Ident, IIRExpr)],
         _span: Span,
     ) -> IntpControlFlow {
         let mut fields = HashMap::default();
-        for (span, expr) in iir_fields {
+        for (field_ident, expr) in iir_fields {
             match self.visit_expr(expr) {
                 v @ IntpControlFlow::Ret(_) => return v,
-                IntpControlFlow::Val(v) => fields.insert(self.src[span.range()].to_owned(), v),
+                IntpControlFlow::Val(v) => fields.insert(field_ident.clone(), v),
             };
         }
 
@@ -289,18 +287,19 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             }
         }
 
-        IntpControlFlow::Val(Value::new_obj(
-            self.src[name.range()].to_owned(),
-            supers,
-            fields,
-        ))
+        IntpControlFlow::Val(Value::new_obj(name, supers, fields))
     }
 
-    fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, _span: Span) -> IntpControlFlow {
+    fn visit_access(
+        &mut self,
+        expr: &IIRExpr,
+        access_ident: Ident,
+        _span: Span,
+    ) -> IntpControlFlow {
         let value = visit_or_ret!(self, expr);
 
         match value {
-            Value::Obj(o) => match o.borrow().get_field(&self.src[access_ident.range()]) {
+            Value::Obj(o) => match o.borrow().get_field(access_ident) {
                 Some(val) => IntpControlFlow::Val(val.clone()),
                 None => IntpControlFlow::Val(Value::None),
             },
@@ -311,7 +310,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
     fn visit_access_set(
         &mut self,
         lhs: &IIRExpr,
-        access_ident: Span,
+        access_ident: Ident,
         rhs: &IIRExpr,
         _span: Span,
     ) -> IntpControlFlow {
@@ -319,8 +318,7 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
         let lhs_val = visit_or_ret!(self, lhs);
         match lhs_val {
             Value::Obj(o) => {
-                o.borrow_mut()
-                    .set_field(&self.src[access_ident.range()], rhs_val);
+                o.borrow_mut().set_field(access_ident, rhs_val);
                 IntpControlFlow::Val(Value::None)
             }
             _ => IntpControlFlow::Ret(Value::None),
