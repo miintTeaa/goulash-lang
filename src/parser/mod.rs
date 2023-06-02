@@ -177,37 +177,54 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
 
             Expr::new(ExprData::Fn(args, stmts, expr), span)
         }
-        Rule::object => {
+        Rule::object => 'mtch: {
             let mut object_pairs = primary.into_inner();
             let name_span = {
                 let name = object_pairs.next().unwrap().as_span();
                 Span::from(name.start()..name.end())
             };
             let mut fields = Vec::new();
-            let super_pairs = loop {
-                let ident = match object_pairs.next() {
-                    Some(next) => match next.as_rule() {
-                        Rule::ident => Span::from(next.as_span().start()..next.as_span().end()),
-                        Rule::ident_lst => break Some(next.into_inner()),
-                        _ => unreachable!(),
-                    },
-                    None => break None,
-                };
-                let expr = parse_expr(object_pairs.next().unwrap());
-                fields.push((ident, expr));
-            };
             let mut supers = Vec::new();
-            match super_pairs {
-                Some(super_pairs) => {
-                    for ident in super_pairs {
+
+            let next = match object_pairs.next() {
+                Some(next) => next,
+                None => break 'mtch Expr::new(ExprData::Class(name_span, supers, fields), span),
+            };
+
+            match next.as_rule() {
+                Rule::ident_lst => {
+                    for ident in next.into_inner() {
                         supers.push(Expr::new(
                             ExprData::Var,
                             Span::from(ident.as_span().start()..ident.as_span().end()),
                         ));
                     }
+
+                    loop {
+                        let ident = match object_pairs.next() {
+                            Some(next) => Span::from(next.as_span().start()..next.as_span().end()),
+                            None => break,
+                        };
+                        let expr = parse_expr(object_pairs.next().unwrap());
+                        fields.push((ident, expr));
+                    }
                 }
-                None => {}
+                Rule::ident => {
+                    let mut ident = Span::from(next.as_span().start()..next.as_span().end());
+                    loop {
+                        let expr = parse_expr(object_pairs.next().unwrap());
+                        fields.push((ident, expr));
+                        ident = match object_pairs.next() {
+                            Some(ident) => {
+                                Span::from(ident.as_span().start()..ident.as_span().end())
+                            }
+                            None => break,
+                        };
+                    }
+                }
+                _ => unreachable!(),
             };
+
             Expr::new(ExprData::Class(name_span, supers, fields), span)
         }
         rule => unreachable!("{rule:#?}"),

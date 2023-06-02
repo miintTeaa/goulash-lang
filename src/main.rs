@@ -23,14 +23,18 @@ fn main() {
             println(" and " + b);
         };
     };
-    let test2 = obj Test2 {
+    let test2 = obj Test2 as prev {
         shout3 = fn a, b, c {
             print("shouting " + a);
             print(" and " + b);
             println(" and also " + c)
         };
         a = 2;
-    } extends prev;
+    };
+    // these are parsing tests //
+    obj Test3 as test2 {};
+    obj Test4 {};
+    /////////////////////////////
     test2.shout3("hello " + "world", false, true);
     test2.shout2("hi", None);
     println("you should see two foos and no bars");

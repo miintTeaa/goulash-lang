@@ -1,7 +1,8 @@
 program = { SOI ~ (stmt? ~ ";")* ~ EOI }
 
 WHITESPACE = _{ WHITE_SPACE }
-COMMENT    = @{ ("//" ~ (!"\n" ~ ANY)* ~ "\n") | ("/*" ~ (!"*/" ~ ANY)* ~ "*/") }
+COMMENT    = _{ comment_ }
+comment_   = @{ ("//" ~ (!"\n" ~ ANY)* ~ "\n") | ("/*" ~ (!"*/" ~ ANY)* ~ "*/") }
 
 stmt     = { let_stmt | expr }
 let_stmt = { "let" ~ ident ~ "=" ~ expr }
@@ -69,7 +70,7 @@ integer   = @{ ASCII_DIGIT+ }
 ident     = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHA | ASCII_DIGIT | "_")* }
 function  =  { "fn" ~ ident_lst? ~ block }
 object    =  {
-    "obj" ~ ident ~ "{" ~ (ident ~ "=" ~ expr ~ ";")* ~ "}" ~ ("extends" ~ ident_lst)?
+    "obj" ~ ident ~ ("as" ~ ident_lst)? ~ "{" ~ (ident ~ "=" ~ expr ~ ";")* ~ "}"
 }
 ident_lst =  { ident ~ ("," ~ ident)* ~ ","? }
 true      =  { "true" }
@@ -85,7 +86,7 @@ keyword = _{
   | "or"
   | "and"
   | "None"
-  | "extends"
+  | "as"
 }
 
 // this reads as:
