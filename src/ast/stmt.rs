@@ -34,13 +34,11 @@ impl From<Expr> for Stmt {
 impl Debug for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.data {
-            StmtData::Let(sp, expr) => {
-                let mut tup = f.debug_tuple("Stmt:LET");
-                tup.field(&self.span)
-                    .field(&format_args!("Ident:{sp:?}"))
-                    .field(expr)
-                    .finish()
-            }
+            StmtData::Let(sp, expr) => f
+                .debug_tuple(&format!("Stmt:LET[{}]", self.span))
+                .field(&format_args!("Ident:{sp:?}"))
+                .field(expr)
+                .finish(),
             StmtData::Expr(expr) => {
                 if f.alternate() {
                     write!(f, "Stmt:{expr:#?}")
@@ -49,7 +47,7 @@ impl Debug for Stmt {
                 }
             }
             StmtData::Error => {
-                write!(f, "Stmt:ERROR")
+                write!(f, "Stmt:ERROR[{}]", self.span)
             }
         }
     }

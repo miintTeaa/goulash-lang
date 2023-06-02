@@ -38,50 +38,44 @@ impl Debug for Expr {
         let span = self.span;
         match &self.data {
             ExprData::Op(op, lhs, rhs) => f
-                .debug_tuple(&format!("Expr:BI[{op:?}]"))
+                .debug_tuple(&format!("Expr:OP{op:?}[{span}]"))
                 .field(&span)
                 .field(&lhs)
                 .field(&rhs)
                 .finish(),
             ExprData::UnOp(op, expr) => f
-                .debug_tuple(&format!("Expr:UN[{op:?}]"))
-                .field(&span)
+                .debug_tuple(&format!("Expr:UN_OP{op:?}[{span}]"))
                 .field(&expr)
                 .finish(),
-            ExprData::Lit(val) => write!(f, "Expr:LITERAL({span} {val:?})"),
+            ExprData::Lit(val) => write!(f, "Expr:LITERAL[{span}]({val:?})"),
             ExprData::Var => {
-                write!(f, "Expr:VAR({span})")
+                write!(f, "Expr:VAR[{span}]")
             }
-            ExprData::Error => write!(f, "Expr:ERROR({span})"),
+            ExprData::Error => write!(f, "Expr:ERROR[{span}]"),
             ExprData::Block(stmts, expr) => f
-                .debug_tuple(&format!("Expr:BLOCK"))
-                .field(&span)
+                .debug_tuple(&format!("Expr:BLOCK[{span}]"))
                 .field(&stmts)
                 .field(&expr)
                 .finish(),
             ExprData::Fn(args, stmts, expr) => f
-                .debug_tuple(&format!("Expr:FN"))
-                .field(&span)
+                .debug_tuple(&format!("Expr:FN[{span}]"))
                 .field(&args)
                 .field(&stmts)
                 .field(&expr)
                 .finish(),
             ExprData::Call(callable, args) => f
-                .debug_tuple(&format!("Expr:CALL"))
-                .field(&span)
+                .debug_tuple(&format!("Expr:CALL[{span}]"))
                 .field(&callable)
                 .field(&args)
                 .finish(),
             ExprData::Class(name, supers, fields) => f
-                .debug_tuple("Expr:CLASS")
-                .field(&span)
+                .debug_tuple(&format!("Expr:CLASS[{span}]"))
                 .field(name)
                 .field(supers)
                 .field(fields)
                 .finish(),
             ExprData::Access(expr, ident_span) => f
-                .debug_tuple("Expr:ACCESS")
-                .field(&span)
+                .debug_tuple(&format!("Expr:ACCESS[{span}]"))
                 .field(expr)
                 .field(ident_span)
                 .finish(),
