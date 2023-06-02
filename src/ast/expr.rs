@@ -96,6 +96,14 @@ impl Debug for Expr {
                 .field(block)
                 .field(r#else)
                 .finish(),
+            ExprData::Loop(block) => f
+                .debug_tuple(&format!("Expr:LOOP[{span}]"))
+                .field(block)
+                .finish(),
+            ExprData::Break(expr) => f
+                .debug_tuple(&format!("Expr:BREAK[{span}]"))
+                .field(expr)
+                .finish(),
         }
     }
 }
@@ -113,12 +121,14 @@ pub enum ExprData {
     Call(Box<Expr>, Vec<Expr>),
     Lit(LiteralKind),
     Block(Vec<Stmt>, Option<Box<Expr>>),
+    Loop(Box<Expr>),
     Class(Ident, Vec<Expr>, Vec<(Ident, Expr)>),
     Fn(Vec<Ident>, Vec<Stmt>, Option<Box<Expr>>),
     If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
     Access(Box<Expr>, Ident),
     List(Vec<Expr>),
     Index(Box<Expr>, Box<Expr>),
+    Break(Option<Box<Expr>>),
     Var(Ident),
     Error,
 }

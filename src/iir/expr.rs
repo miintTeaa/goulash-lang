@@ -137,6 +137,13 @@ impl IIRExpr {
                         r#else,
                     )
                 }
+                ExprData::Loop(block) => {
+                    IIRExprData::Loop(Box::new(IIRExpr::try_from(*block, src)?))
+                }
+                ExprData::Break(expr) => IIRExprData::Break(match expr {
+                    Some(expr) => Some(Box::new(IIRExpr::try_from(*expr, src)?)),
+                    None => None,
+                }),
             },
         })
     }
@@ -173,6 +180,8 @@ pub enum IIRExprData {
     IndexSet(Box<IIRExpr>, Box<IIRExpr>, Box<IIRExpr>),
     Index(Box<IIRExpr>, Box<IIRExpr>),
     If(Box<IIRExpr>, Box<IIRExpr>, Option<Box<IIRExpr>>),
+    Loop(Box<IIRExpr>),
+    Break(Option<Box<IIRExpr>>),
     Var(Ident),
 }
 

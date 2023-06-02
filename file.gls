@@ -108,3 +108,13 @@ if true {};
 if true {} else {};
 obj Test3 as test2 {};
 obj Test4 {};
+
+let test = 0;
+
+loop {
+    println(test);
+    test = test + 1;
+    if test > 5 {
+        break;
+    }
+};

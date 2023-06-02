@@ -98,6 +98,7 @@ macro_rules! visit_or_ret {
     ($self:expr, $val:expr) => {
         match $self.visit_expr($val) {
             v @ IntpControlFlow::Ret(_) => return v,
+            b @ IntpControlFlow::Brk(_) => return b,
             IntpControlFlow::Val(v) => v,
         }
     };
@@ -107,6 +108,7 @@ macro_rules! get_or_ret {
     ($val:expr) => {
         match $val {
             v @ IntpControlFlow::Ret(_) => return v,
+            b @ IntpControlFlow::Brk(_) => return b,
             IntpControlFlow::Val(v) => v,
         }
     };
@@ -116,6 +118,7 @@ macro_rules! get_or_ret {
 pub enum IntpControlFlow {
     Ret(Value),
     Val(Value),
+    Brk(Value),
 }
 
 impl IIRStmtVisitor<IntpControlFlow> for Interpreter {
@@ -239,6 +242,10 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
                     self.scopes.pop_scope();
                     return v;
                 }
+                v @ IntpControlFlow::Brk(_) => {
+                    self.scopes.pop_scope();
+                    return v;
+                }
                 IntpControlFlow::Val(_) => (),
             }
         }
@@ -272,10 +279,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
     ) -> IntpControlFlow {
         let mut fields = HashMap::default();
         for (field_ident, expr) in iir_fields {
-            match self.visit_expr(expr) {
-                v @ IntpControlFlow::Ret(_) => return v,
-                IntpControlFlow::Val(v) => fields.insert(field_ident.clone(), v),
-            };
+            fields.insert(field_ident.clone(), visit_or_ret!(self, expr));
         }
 
         let mut supers = Vec::new();
@@ -362,6 +366,27 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
         } else {
             // oof
             IntpControlFlow::Val(Value::None)
+        }
+    }
+
+    fn visit_loop(&mut self, block: &IIRExpr, _span: Span) -> IntpControlFlow {
+        loop {
+            match self.visit_expr(block) {
+                v @ IntpControlFlow::Ret(_) => break v,
+                IntpControlFlow::Brk(v) => break IntpControlFlow::Val(v),
+                IntpControlFlow::Val(_) => {}
+            }
+        }
+    }
+
+    fn visit_break(&mut self, expr: Option<&IIRExpr>, _span: Span) -> IntpControlFlow {
+        match expr {
+            Some(v) => match self.visit_expr(v) {
+                v @ IntpControlFlow::Ret(_) => v,
+                v @ IntpControlFlow::Brk(_) => v,
+                IntpControlFlow::Val(v) => IntpControlFlow::Brk(v),
+            },
+            None => IntpControlFlow::Brk(Value::None),
         }
     }
 }

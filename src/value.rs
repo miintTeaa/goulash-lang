@@ -80,11 +80,13 @@ impl FunctionData {
                 match interpreter.visit_stmt(stmt) {
                     IntpControlFlow::Ret(v) => return v,
                     IntpControlFlow::Val(_) => (),
+                    IntpControlFlow::Brk(_) => panic!("tried to break outside of loop"),
                 }
             }
             if let Some(expr) = ending_expr.as_ref() {
                 match interpreter.visit_expr(expr) {
                     IntpControlFlow::Ret(v) | IntpControlFlow::Val(v) => return v,
+                    IntpControlFlow::Brk(_) => panic!("tried to break outside of loop"),
                 }
             }
             Value::None
@@ -199,6 +201,7 @@ impl Value {
             (Value::List(li), index) => {
                 let index = match index.to_int(interpreter) {
                     v @ IntpControlFlow::Ret(_) => return v,
+                    v @ IntpControlFlow::Brk(_) => return v,
                     IntpControlFlow::Val(v) => match v {
                         Value::Int(i) => i as usize,
                         _ => return IntpControlFlow::Ret(Value::None),
@@ -230,6 +233,7 @@ impl Value {
             (Value::List(li), index) => {
                 let index = match index.to_int(interpreter) {
                     v @ IntpControlFlow::Ret(_) => return v,
+                    v @ IntpControlFlow::Brk(_) => return v,
                     IntpControlFlow::Val(v) => match v {
                         Value::Int(i) => i as usize,
                         _ => return IntpControlFlow::Ret(Value::None),
@@ -298,6 +302,7 @@ impl Value {
             (o @ Value::Obj(_), other) | (other, o @ Value::Obj(_)) => {
                 match o.to_int(interpreter) {
                     v @ IntpControlFlow::Ret(_) => return v,
+                    v @ IntpControlFlow::Brk(_) => return v,
                     IntpControlFlow::Val(v) => v,
                 }
                 .greater_than(other, interpreter)
