@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
@@ -7,7 +5,7 @@ use crate::{
     },
     error::{LangError, LangErrorData},
     span::Span,
-    value::{FunctionData, Value},
+    value::Value,
 };
 
 use super::IIRStmt;
@@ -54,10 +52,10 @@ impl IIRExpr {
                     )?))
                 }
                 ExprData::Lit(LiteralKind::Str) => {
-                    IIRExprData::Const(Value::Str(Rc::new(make_string(&src[other.span.range()]))))
+                    IIRExprData::Const(Value::new_str(process_escapes(&src[other.span.range()])))
                 }
-                ExprData::Lit(LiteralKind::True) => IIRExprData::Const(Value::Bool(true)),
-                ExprData::Lit(LiteralKind::False) => IIRExprData::Const(Value::Bool(false)),
+                ExprData::Lit(LiteralKind::True) => IIRExprData::Const(Value::TRUE),
+                ExprData::Lit(LiteralKind::False) => IIRExprData::Const(Value::FALSE),
                 ExprData::Lit(LiteralKind::None) => IIRExprData::Const(Value::None),
                 ExprData::Var => IIRExprData::Var,
                 ExprData::Error => panic!("tried to convert ExprData::Error to IIRExprData"),
@@ -81,13 +79,13 @@ impl IIRExpr {
                         Some(expr) => Some(IIRExpr::try_from(*expr, src)?),
                         None => None,
                     };
-                    IIRExprData::Const(Value::Fn(Rc::new(FunctionData::new(
+                    IIRExprData::Const(Value::new_fn(
                         args.into_iter()
                             .map(|span| src[span.range()].to_owned())
                             .collect(),
                         iir_stmts,
                         iir_expr,
-                    ))))
+                    ))
                 }
                 ExprData::Call(callable, args) => {
                     let mut iir_args = Vec::new();
@@ -152,7 +150,7 @@ pub enum IIRExprData {
     Var,
 }
 
-fn make_string(s: &str) -> String {
+fn process_escapes(s: &str) -> String {
     let mut ret = String::new();
     let mut chars = s.chars();
     chars.next(); // skip first "

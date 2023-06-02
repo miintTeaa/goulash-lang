@@ -134,6 +134,32 @@ pub enum Value {
 }
 
 impl Value {
+    pub const TRUE: Value = Value::Bool(true);
+    pub const FALSE: Value = Value::Bool(false);
+
+    pub fn new_fn(args: Vec<String>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
+        Self::Fn(Rc::new(FunctionData::new(args, stmts, ending_expr)))
+    }
+
+    pub fn new_str(s: String) -> Self {
+        Self::Str(Rc::new(s))
+    }
+
+    pub fn new_fn_raw(
+        args: Vec<String>,
+        callback: impl Fn(&mut Interpreter) -> Value + 'static,
+    ) -> Self {
+        Self::Fn(Rc::new(FunctionData::new_raw(args, Box::new(callback))))
+    }
+
+    pub fn new_obj(
+        name: String,
+        supers: Vec<Rc<RefCell<ObjData>>>,
+        fields: HashMap<String, Value>,
+    ) -> Self {
+        Self::Obj(Rc::new(RefCell::new(ObjData::new(name, supers, fields))))
+    }
+
     pub fn apply_suffix(&self, s: &mut String) {
         match self {
             Value::Int(_) => *s += "_int",
@@ -308,12 +334,12 @@ impl Value {
             (Value::Str(s1), Value::Str(s2)) => {
                 let mut s = (&*s1).to_owned();
                 s += &*s2;
-                IntpControlFlow::Val(Value::Str(Rc::new(s)))
+                IntpControlFlow::Val(Value::new_str(s))
             }
             (Value::Str(s1), rhs) => {
                 let mut s = (&*s1).to_owned();
                 s += &format!("{rhs}");
-                IntpControlFlow::Val(Value::Str(Rc::new(s)))
+                IntpControlFlow::Val(Value::new_str(s))
             }
             (_, _) => IntpControlFlow::Ret(Value::None),
         }
@@ -343,7 +369,7 @@ impl Value {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
                 _ => match o.borrow().get_field("is_truthy") {
                     Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
-                    _ => IntpControlFlow::Val(Value::Bool(true)),
+                    _ => IntpControlFlow::Val(Value::TRUE),
                 },
             },
             value => IntpControlFlow::Val(Value::Bool(!value.is_truthy())),

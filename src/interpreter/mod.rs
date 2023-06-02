@@ -1,6 +1,6 @@
 mod scopes;
 
-use std::{cell::RefCell, collections::HashMap, io::Write, process::exit, rc::Rc};
+use std::{collections::HashMap, io::Write, process::exit};
 
 use scopes::ScopeStack;
 
@@ -12,7 +12,7 @@ use crate::{
     },
     span::Span,
     types::Type,
-    value::{FunctionData, ObjData, Value},
+    value::Value,
 };
 
 pub struct Interpreter<'src> {
@@ -29,9 +29,9 @@ impl<'src> Interpreter<'src> {
 
         interpreter.scopes.declare(
             "print".to_owned(),
-            Value::Fn(Rc::new(FunctionData::new_raw(
+            Value::new_fn_raw(
                 vec!["printed".to_owned()],
-                Box::new(|interpreter: &mut Interpreter| {
+                |interpreter: &mut Interpreter| {
                     let mut stdout = std::io::stdout().lock();
                     let printed = interpreter.scopes.find("printed").expect("should exist");
                     let buffer = format!("{printed}");
@@ -50,23 +50,23 @@ impl<'src> Interpreter<'src> {
                                 std::io::ErrorKind::Interrupted => {
                                     continue;
                                 }
-                                _ => return Value::Bool(false),
+                                _ => return Value::FALSE,
                             },
                         }
                     }
                     match stdout.flush() {
-                        Ok(_) => Value::Bool(true),
-                        Err(_) => Value::Bool(false),
+                        Ok(_) => Value::TRUE,
+                        Err(_) => Value::FALSE,
                     }
-                }),
-            ))),
+                },
+            ),
         );
 
         interpreter.scopes.declare(
             "exit".to_owned(),
-            Value::Fn(Rc::new(FunctionData::new_raw(
+            Value::new_fn_raw(
                 vec!["exit_data".to_owned()],
-                Box::new(|interpreter: &mut Interpreter| {
+                |interpreter: &mut Interpreter| {
                     let value = interpreter
                         .scopes
                         .find_mut("exit_data")
@@ -79,8 +79,8 @@ impl<'src> Interpreter<'src> {
                             exit(1)
                         }
                     }
-                }),
-            ))),
+                },
+            ),
         );
 
         interpreter
@@ -289,11 +289,11 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             }
         }
 
-        IntpControlFlow::Val(Value::Obj(Rc::new(RefCell::new(ObjData::new(
+        IntpControlFlow::Val(Value::new_obj(
             self.src[name.range()].to_owned(),
             supers,
             fields,
-        )))))
+        ))
     }
 
     fn visit_access(&mut self, expr: &IIRExpr, access_ident: Span, _span: Span) -> IntpControlFlow {
