@@ -122,6 +122,49 @@ std.list.remove(test_list, 0);
 println(test_list);
 println(std.list.len(test_list));
 
+
+let new_vector = fn {
+    obj Vector {
+        inner = [];
+
+        get = fn self, index {
+            self.inner[index]
+        };
+        set = fn self, index, value {
+            self.inner[index] = value
+        };
+        len = fn self {
+            std.list.len(self.inner)
+        };
+        remove = fn self, index {
+            std.list.remove(self.inner, index)
+        };
+        push = fn self, value {
+            std.list.append(self.inner, value)
+        };
+        pop = fn self {
+            std.list.remove(self.inner, std.list.len(self.inner) - 1)
+        };
+        last = fn self {
+            self.inner[std.list.len(self.inner) - 1]
+        };
+    }
+};
+
+let vector = new_vector();
+vector:push(0);
+vector:push(1);
+vector:push(obj Test {});
+print(vector:len());
+println(vector.inner);
+println("1: " + vector:get(1));
+println("last: " + vector:last());
+println("popped "+vector:pop());
+print(vector:len());
+println(vector.inner);
+println("1: " + vector:get(1));
+println("last: " + vector:last());
+
 // parse tests //
 if true {} elif true {} elif true {};
 if true {};

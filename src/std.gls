@@ -1,7 +1,7 @@
 return obj Std {
 	// print(x) -> bool;
 	// return value indicates whether it succeded or not
-	print = __builtin__("print")(printed);
+	print = __builtin__("print");
 	// exit(x) -> !;
 	// will never return
 	exit = __builtin__("exit");
