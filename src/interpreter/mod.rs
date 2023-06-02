@@ -1,6 +1,6 @@
 mod scopes;
 
-use std::{cell::RefCell, collections::HashMap, process::exit, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, io::Write, process::exit, rc::Rc};
 
 use scopes::ScopeStack;
 
@@ -32,11 +32,32 @@ impl<'src> Interpreter<'src> {
             Value::Fn(Rc::new(FunctionData::new_raw(
                 vec!["printed".to_owned()],
                 Box::new(|interpreter: &mut Interpreter| {
-                    println!(
-                        "{}",
-                        interpreter.scopes.find("printed").expect("should exist")
-                    );
-                    Value::None
+                    let mut stdout = std::io::stdout().lock();
+                    let printed = interpreter.scopes.find("printed").expect("should exist");
+                    let buffer = format!("{printed}");
+                    let mut buffer = buffer.as_bytes();
+                    let mut written = 0;
+                    loop {
+                        match stdout.write(buffer) {
+                            Ok(new_written) => {
+                                written += new_written;
+                                if written >= buffer.len() {
+                                    break;
+                                }
+                                buffer = &buffer[new_written..];
+                            }
+                            Err(e) => match e.kind() {
+                                std::io::ErrorKind::Interrupted => {
+                                    continue;
+                                }
+                                _ => return Value::Bool(false),
+                            },
+                        }
+                    }
+                    match stdout.flush() {
+                        Ok(_) => Value::Bool(true),
+                        Err(_) => Value::Bool(false),
+                    }
                 }),
             ))),
         );

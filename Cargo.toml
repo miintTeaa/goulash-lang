@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 concat-idents = "1.1.4"
+lazy_static = "1.4.0"
+pest = "2.6.0"
+pest_derive = "2.6.0"

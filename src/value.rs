@@ -288,7 +288,37 @@ macro_rules! impl_op {
     };
 }
 
-impl_op!(add => (+, "op_add"));
+impl Value {
+    pub fn add(self, rhs: Value, interpreter: &mut Interpreter) -> IntpControlFlow {
+        match (self, rhs) {
+            (Value::None, _) => IntpControlFlow::Ret(Value::None),
+            (Value::Float(f1), Value::Float(f2)) => IntpControlFlow::Val(Value::Float(f1 + f2)),
+            (Value::Float(f), Value::Int(i)) | (Value::Int(i), Value::Float(f)) => {
+                IntpControlFlow::Val(Value::Float(f + i as f32))
+            }
+            (Value::Int(i1), Value::Int(i2)) => {
+                concat_idents::concat_idents!(wrapping_fn = wrapping_,add {
+                  IntpControlFlow::Val(Value::Int(i1.wrapping_fn(i2)))
+                })
+            }
+            (Value::Obj(o), rhs) => match o.borrow().get_field("op_add") {
+                Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone()), rhs], interpreter),
+                _ => IntpControlFlow::Ret(Value::None),
+            },
+            (Value::Str(s1), Value::Str(s2)) => {
+                let mut s = (&*s1).to_owned();
+                s += &*s2;
+                IntpControlFlow::Val(Value::Str(Rc::new(s)))
+            }
+            (Value::Str(s1), rhs) => {
+                let mut s = (&*s1).to_owned();
+                s += &format!("{rhs}");
+                IntpControlFlow::Val(Value::Str(Rc::new(s)))
+            }
+            (_, _) => IntpControlFlow::Ret(Value::None),
+        }
+    }
+}
 impl_op!(sub => (-, "op_sub"));
 impl_op!(mul => (*, "op_mul"));
 impl_op!(div => (/, "op_div"));

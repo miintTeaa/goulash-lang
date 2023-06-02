@@ -1,0 +1,98 @@
+program = { SOI ~ (stmt? ~ ";")* ~ EOI }
+
+WHITESPACE = _{ WHITE_SPACE }
+COMMENT    = @{ ("//" ~ (!"\n" ~ ANY)* ~ "\n") | ("/*" ~ (!"*/" ~ ANY)* ~ "*/") }
+
+stmt     = { let_stmt | expr }
+let_stmt = { "let" ~ ident ~ "=" ~ expr }
+
+expr = { prefix* ~ primary ~ postfix* ~ (infix ~ prefix* ~ primary ~ postfix*)* }
+
+prefix = _{
+    not
+  | neg
+}
+not    =  { "!" }
+neg    =  { "-" }
+
+infix      = _{
+    plus
+  | minus
+  | mul
+  | div
+  | eq
+  | not_eq
+  | greater_eq
+  | greater
+  | lesser_eq
+  | lesser
+  | assign
+  | or
+  | and
+}
+plus       =  { "+" }
+minus      =  { "-" }
+mul        =  { "*" }
+div        =  { "/" }
+eq         =  { "==" }
+not_eq     =  { "!=" }
+greater_eq =  { ">=" }
+greater    =  { ">" }
+lesser_eq  =  { "<=" }
+lesser     =  { "<" }
+assign     =  { "=" }
+or         =  { "or" }
+and        =  { "and" }
+
+postfix   = _{
+    call_args
+  | access
+}
+call_args =  { "(" ~ expr? ~ ("," ~ expr)* ~ ","? ~ ")" }
+access    =  { "." ~ ident }
+
+primary   = _{
+    "(" ~ expr ~ ")"
+  | function
+  | object
+  | block
+  | true
+  | false
+  | none
+  | ident
+  | float
+  | integer
+  | string
+}
+float     = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+integer   = @{ ASCII_DIGIT+ }
+ident     = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHA | ASCII_DIGIT | "_")* }
+function  =  { "fn" ~ ident_lst? ~ block }
+object    =  {
+    "obj" ~ ident ~ "{" ~ (ident ~ "=" ~ expr ~ ";")* ~ "}" ~ ("extends" ~ ident_lst)?
+}
+ident_lst =  { ident ~ ("," ~ ident)* ~ ","? }
+true      =  { "true" }
+false     =  { "false" }
+none      =  { "None" }
+
+keyword = _{
+    "fn"
+  | "true"
+  | "false"
+  | "obj"
+  | "let"
+  | "or"
+  | "and"
+  | "None"
+  | "extends"
+}
+
+// this reads as:
+// match one [ " ]
+// while doesn't match [ " ]:
+// try to match [ \ ] followed by any character
+// if that fails, try to match any character
+string  = @{ "\"" ~ (!"\"" ~ (escaped | ANY))* ~ "\"" }
+escaped = @{ "\\" ~ ANY }
+block   =  { "{" ~ (stmt ~ ";")* ~ expr? ~ "}" }
