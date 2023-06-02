@@ -444,7 +444,7 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
                 v @ IntpControlFlow::Brk(_) => v,
                 IntpControlFlow::Val(v) => IntpControlFlow::Ret(v),
             },
-            None => IntpControlFlow::Brk(Value::None),
+            None => IntpControlFlow::Ret(Value::None),
         }
     }
 }
