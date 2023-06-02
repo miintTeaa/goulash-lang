@@ -171,3 +171,25 @@ if true {};
 if true {} else {};
 obj Test3 as test2 {};
 obj Test4 {};
+
+// builtin type annotations
+// you'll never accidentally pass the wrong type to a function again!
+// it erases the old identifier, to make sure you won't mistakenly use it as the wrong type
+let x = 1;
+x = "hello";
+x_str = [];
+x_str_list = fn {};
+x_str_list_fn = obj Test {};
+x_str_list_fn_Test = true;
+println(x_str_list_fn_Test_bool);
+// it even works with fields!
+let ex = obj Example {
+    y = 0;
+};
+ex.y = false;
+println("wow! "+ ex.y_bool);
+// assigning a variable or field to None just erases it though
+// why would you need to keep track of Nones anyways?
+x_str_list_fn_Test_bool = None;
+// Internal error
+println(x_str_list_fn_Test_bool_none);

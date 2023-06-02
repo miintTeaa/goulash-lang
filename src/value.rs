@@ -52,9 +52,19 @@ impl ObjData {
     }
 
     pub fn set_field(&mut self, ident: Ident, value: Value) -> Option<Value> {
-        match self.fields.contains_key(&ident) {
-            true => self.fields.insert(ident.clone(), value),
-            false => {
+        match self.fields.get_key_value(&ident) {
+            Some((k, v)) => {
+                let k = k.clone();
+                if v.get_type() == Type::None {
+                    self.fields.remove(&k)
+                } else if v.get_type() != value.get_type() {
+                    self.fields.remove(&k);
+                    self.fields.insert(id(value.apply_suffix(&k)), value)
+                } else {
+                    self.fields.insert(ident.clone(), value)
+                }
+            }
+            None => {
                 for sup in &self.supers {
                     match sup.borrow_mut().set_field(ident.clone(), value.clone()) {
                         Some(field) => return Some(field),
