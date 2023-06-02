@@ -6,5 +6,6 @@ pub enum Type {
     Bool,
     Fn,
     Obj,
+    List,
     None,
 }

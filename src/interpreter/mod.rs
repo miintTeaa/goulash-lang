@@ -326,4 +326,29 @@ impl<'src> IIRExprVisitor<IntpControlFlow> for Interpreter<'src> {
             _ => IntpControlFlow::Ret(Value::None),
         }
     }
+
+    fn visit_list(&mut self, exprs: &[IIRExpr]) -> IntpControlFlow {
+        let mut values = Vec::new();
+        for expr in exprs {
+            values.push(get_or_ret!(self.visit_expr(expr)));
+        }
+        IntpControlFlow::Val(Value::new_list(values))
+    }
+
+    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr) -> IntpControlFlow {
+        visit_or_ret!(self, expr).index_by(visit_or_ret!(self, index), self)
+    }
+
+    fn visit_index_set(
+        &mut self,
+        expr: &IIRExpr,
+        index: &IIRExpr,
+        to: &IIRExpr,
+    ) -> IntpControlFlow {
+        visit_or_ret!(self, expr).index_by_set(
+            visit_or_ret!(self, index),
+            visit_or_ret!(self, to),
+            self,
+        )
+    }
 }

@@ -32,6 +32,11 @@ impl IIRExpr {
                             Box::new(IIRExpr::try_from(*rhs, src)?),
                         )
                     }
+                    (BinaryOp::Assign, ExprData::Index(expr, index)) => IIRExprData::IndexSet(
+                        Box::new(IIRExpr::try_from(*expr, src)?),
+                        Box::new(IIRExpr::try_from(*index, src)?),
+                        Box::new(IIRExpr::try_from(*rhs, src)?),
+                    ),
                     (_, data) => IIRExprData::Op(
                         op,
                         Box::new(Self::try_from(Expr::new(data, lhs.span), src)?),
@@ -115,6 +120,17 @@ impl IIRExpr {
                 ExprData::Access(expr, span) => {
                     IIRExprData::Access(Box::new(IIRExpr::try_from(*expr, src)?), span)
                 }
+                ExprData::List(exprs) => {
+                    let mut iir_exprs = Vec::new();
+                    for expr in exprs {
+                        iir_exprs.push(IIRExpr::try_from(expr, src)?);
+                    }
+                    IIRExprData::List(iir_exprs)
+                }
+                ExprData::Index(expr, index) => IIRExprData::Index(
+                    Box::new(IIRExpr::try_from(*expr, src)?),
+                    Box::new(IIRExpr::try_from(*index, src)?),
+                ),
             },
         })
     }
@@ -144,9 +160,12 @@ pub enum IIRExprData {
     Block(Vec<IIRStmt>, Option<Box<IIRExpr>>),
     Call(Box<IIRExpr>, Vec<IIRExpr>),
     Class(Span, Vec<IIRExpr>, Vec<(Span, IIRExpr)>),
+    List(Vec<IIRExpr>),
     Const(Value),
     AccessSet(Box<IIRExpr>, Span, Box<IIRExpr>),
     Access(Box<IIRExpr>, Span),
+    IndexSet(Box<IIRExpr>, Box<IIRExpr>, Box<IIRExpr>),
+    Index(Box<IIRExpr>, Box<IIRExpr>),
     Var,
 }
 

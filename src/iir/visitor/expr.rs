@@ -25,6 +25,9 @@ pub trait IIRExprVisitor<T> {
             IIRExprData::AccessSet(lhs, access_ident, rhs) => {
                 self.visit_access_set(lhs, *access_ident, rhs, expr.span)
             }
+            IIRExprData::List(exprs) => self.visit_list(exprs),
+            IIRExprData::Index(expr, index) => self.visit_index(expr, index),
+            IIRExprData::IndexSet(expr, index, to) => self.visit_index_set(expr, index, to),
         }
     }
 
@@ -49,4 +52,7 @@ pub trait IIRExprVisitor<T> {
         rhs: &IIRExpr,
         span: Span,
     ) -> T;
+    fn visit_list(&mut self, exprs: &[IIRExpr]) -> T;
+    fn visit_index(&mut self, expr: &IIRExpr, index: &IIRExpr) -> T;
+    fn visit_index_set(&mut self, expr: &IIRExpr, index: &IIRExpr, to: &IIRExpr) -> T;
 }

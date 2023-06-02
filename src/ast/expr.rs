@@ -79,6 +79,15 @@ impl Debug for Expr {
                 .field(expr)
                 .field(ident_span)
                 .finish(),
+            ExprData::List(li) => f
+                .debug_tuple(&format!("Expr:LIST[{span}]"))
+                .field(li)
+                .finish(),
+            ExprData::Index(li, index) => f
+                .debug_tuple(&format!("Expr:INDEX[{span}]"))
+                .field(li)
+                .field(index)
+                .finish(),
         }
     }
 }
@@ -93,6 +102,8 @@ pub enum ExprData {
     Class(Span, Vec<Expr>, Vec<(Span, Expr)>),
     Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
     Access(Box<Expr>, Span),
+    List(Vec<Expr>),
+    Index(Box<Expr>, Box<Expr>),
     Var,
     Error,
 }

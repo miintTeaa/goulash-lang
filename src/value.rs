@@ -129,6 +129,7 @@ pub enum Value {
     Str(Rc<String>),
     Bool(bool),
     Fn(Rc<FunctionData>),
+    List(Rc<RefCell<Vec<Value>>>),
     Obj(Rc<RefCell<ObjData>>),
     None,
 }
@@ -139,6 +140,10 @@ impl Value {
 
     pub fn new_fn(args: Vec<String>, stmts: Vec<IIRStmt>, ending_expr: Option<IIRExpr>) -> Self {
         Self::Fn(Rc::new(FunctionData::new(args, stmts, ending_expr)))
+    }
+
+    pub fn new_list(values: Vec<Value>) -> Self {
+        Self::List(Rc::new(RefCell::new(values)))
     }
 
     pub fn new_str(s: String) -> Self {
@@ -168,6 +173,7 @@ impl Value {
             Value::Bool(_) => *s += "_bool",
             Value::Fn(_) => *s += "_fn",
             Value::Obj(o) => s.extend(["_", &o.borrow().name]),
+            Value::List(_) => *s += "_list",
             Value::None => *s += "_none",
         };
     }
@@ -180,7 +186,67 @@ impl Value {
             Value::Bool(_) => Type::Bool,
             Value::Fn(_) => Type::Fn,
             Value::Obj(_) => Type::Obj,
+            Value::List(_) => Type::List,
             Value::None => Type::None,
+        }
+    }
+
+    pub fn index_by(&mut self, index: Value, interpreter: &mut Interpreter) -> IntpControlFlow {
+        match (self, index) {
+            (Value::List(li), index) => {
+                let index = match index.to_int(interpreter) {
+                    v @ IntpControlFlow::Ret(_) => return v,
+                    IntpControlFlow::Val(v) => match v {
+                        Value::Int(i) => i as usize,
+                        _ => return IntpControlFlow::Ret(Value::None),
+                    },
+                };
+                match li.borrow().get(index) {
+                    Some(v) => IntpControlFlow::Val(v.clone()),
+                    None => IntpControlFlow::Ret(Value::None),
+                }
+            }
+            (Value::Obj(obj), index) => {
+                let f = match obj.borrow().get_field("index_by") {
+                    Some(Value::Fn(f)) => f,
+                    _ => return IntpControlFlow::Ret(Value::None),
+                };
+                f.call(vec![Value::Obj(obj.clone()), index], interpreter)
+            }
+            _ => IntpControlFlow::Ret(Value::None),
+        }
+    }
+
+    pub fn index_by_set(
+        &mut self,
+        index: Value,
+        to: Value,
+        interpreter: &mut Interpreter,
+    ) -> IntpControlFlow {
+        match (self, index) {
+            (Value::List(li), index) => {
+                let index = match index.to_int(interpreter) {
+                    v @ IntpControlFlow::Ret(_) => return v,
+                    IntpControlFlow::Val(v) => match v {
+                        Value::Int(i) => i as usize,
+                        _ => return IntpControlFlow::Ret(Value::None),
+                    },
+                };
+                let mut li_borrow = li.borrow_mut();
+                match li_borrow.get_mut(index) {
+                    Some(v) => *v = to,
+                    None => return IntpControlFlow::Ret(Value::None),
+                };
+                IntpControlFlow::Val(Value::None)
+            }
+            (Value::Obj(obj), index) => {
+                let f = match obj.borrow().get_field("index_by_set") {
+                    Some(Value::Fn(f)) => f,
+                    _ => return IntpControlFlow::Ret(Value::None),
+                };
+                f.call(vec![Value::Obj(obj.clone()), index, to], interpreter)
+            }
+            _ => IntpControlFlow::Ret(Value::None),
         }
     }
 
@@ -210,12 +276,11 @@ impl Value {
             Value::Float(f) => IntpControlFlow::Val(Value::Int(*f as i32)),
             Value::Str(s) => str_to_int(s),
             Value::Bool(b) => IntpControlFlow::Val(Value::Int(*b as i32)),
-            Value::Fn(_) => IntpControlFlow::Ret(Value::None),
             Value::Obj(o) => match o.borrow().get_field("to_int") {
                 Some(Value::Fn(f)) => f.call(vec![Value::Obj(o.clone())], interpreter),
                 _ => IntpControlFlow::Ret(Value::None),
             },
-            Value::None => IntpControlFlow::Val(Value::Int(0)),
+            _ => IntpControlFlow::Val(Value::Int(0)),
         }
     }
 
@@ -233,6 +298,9 @@ impl Value {
                     IntpControlFlow::Val(v) => v,
                 }
                 .greater_than(other, interpreter)
+            }
+            (Value::List(l1), Value::List(l2)) => {
+                IntpControlFlow::Val(Value::Bool(l1.borrow().len() > l2.borrow().len()))
             }
             (_, _) => IntpControlFlow::Ret(Value::None),
         }
@@ -386,6 +454,18 @@ impl Display for Value {
             Value::Bool(b) => write!(f, "{b}"),
             Value::Obj(o) => write!(f, "<obj {}>", o.borrow().name),
             Value::Fn(func) => write!(f, "<fn {:p}>", func.callback),
+            Value::List(l) => {
+                write!(f, "[")?;
+                let l_borrow = l.borrow();
+                let mut values = l_borrow.iter();
+                if let Some(value) = values.next() {
+                    write!(f, "{value}")?;
+                }
+                for value in values {
+                    write!(f, ", {value}")?;
+                }
+                write!(f, "]")
+            }
             Value::None => write!(f, "None"),
         }
     }

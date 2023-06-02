@@ -80,6 +80,7 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
             .op(Op::prefix(Rule::not)
                 | Op::prefix(Rule::neg))
             .op(Op::postfix(Rule::call_args)
+                | Op::postfix(Rule::index)
                 | Op::postfix(Rule::access))
     };
     }
@@ -129,6 +130,10 @@ pub fn parse_expr(expr: Pair<Rule>) -> Expr {
                     Box::new(expr),
                     op.into_inner().map(|p| parse_expr(p)).collect(),
                 ),
+                Rule::index => ExprData::Index(
+                    Box::new(expr),
+                    Box::new(parse_expr(op.into_inner().next().unwrap())),
+                ),
                 rule => unreachable!("{:?}", rule),
             };
             Expr::new(data, span)
@@ -154,6 +159,11 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
             let (stmts, expr) = parse_block(dbg!(primary.into_inner()));
 
             Expr::new(ExprData::Block(stmts, expr), span)
+        }
+        Rule::list_lit => {
+            let exprs: Vec<Expr> = primary.into_inner().map(|expr| parse_expr(expr)).collect();
+
+            Expr::new(ExprData::List(exprs), span)
         }
         Rule::function => {
             let mut func_pairs = primary.into_inner();

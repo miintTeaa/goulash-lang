@@ -47,8 +47,10 @@ and        =  { "and" }
 
 postfix   = _{
     call_args
+  | index
   | access
 }
+index     =  { "[" ~ expr ~ "]" }
 call_args =  { "(" ~ expr? ~ ("," ~ expr)* ~ ","? ~ ")" }
 access    =  { "." ~ ident }
 
@@ -64,6 +66,7 @@ primary   = _{
   | float
   | integer
   | string
+  | list_lit
 }
 float     = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 integer   = @{ ASCII_DIGIT+ }
@@ -76,6 +79,7 @@ ident_lst =  { ident ~ ("," ~ ident)* ~ ","? }
 true      =  { "true" }
 false     =  { "false" }
 none      =  { "None" }
+list_lit  =  { "[" ~ expr? ~ ("," ~ expr)* ~ ","? ~ "]" }
 
 keyword = _{
     "fn"
