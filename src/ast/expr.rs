@@ -17,7 +17,7 @@ impl Expr {
         Self { span, data }
     }
 
-    pub fn new_lit(value: ExprValueType, span: Span) -> Self {
+    pub fn new_lit(value: LiteralKind, span: Span) -> Self {
         Self {
             span,
             data: ExprData::Lit(value),
@@ -94,7 +94,7 @@ pub enum ExprData {
     Op(BinaryOp, Box<Expr>, Box<Expr>),
     UnOp(UnaryOp, Box<Expr>),
     Call(Box<Expr>, Vec<Expr>),
-    Lit(ExprValueType),
+    Lit(LiteralKind),
     Block(Vec<Stmt>, Option<Box<Expr>>),
     Class(Span, Vec<Expr>, Vec<(Span, Expr)>),
     Fn(Vec<Span>, Vec<Stmt>, Option<Box<Expr>>),
@@ -104,7 +104,7 @@ pub enum ExprData {
 }
 
 #[derive(Debug)]
-pub enum ExprValueType {
+pub enum LiteralKind {
     Int,
     Float,
     Str,

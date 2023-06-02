@@ -6,7 +6,7 @@ use pest::{
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprData, ExprValueType, Stmt,
+        Expr, ExprData, LiteralKind, Stmt,
     },
     span::Span,
 };
@@ -143,13 +143,13 @@ pub fn parse_primary(primary: Pair<Rule>) -> Expr {
     };
     match primary.as_rule() {
         Rule::expr => parse_expr(primary),
-        Rule::r#true => Expr::new_lit(ExprValueType::True, span),
-        Rule::r#false => Expr::new_lit(ExprValueType::False, span),
-        Rule::none => Expr::new_lit(ExprValueType::None, span),
+        Rule::r#true => Expr::new_lit(LiteralKind::True, span),
+        Rule::r#false => Expr::new_lit(LiteralKind::False, span),
+        Rule::none => Expr::new_lit(LiteralKind::None, span),
         Rule::ident => Expr::new(ExprData::Var, span),
-        Rule::float => Expr::new_lit(ExprValueType::Float, span),
-        Rule::integer => Expr::new_lit(ExprValueType::Int, span),
-        Rule::string => Expr::new_lit(ExprValueType::Str, span),
+        Rule::float => Expr::new_lit(LiteralKind::Float, span),
+        Rule::integer => Expr::new_lit(LiteralKind::Int, span),
+        Rule::string => Expr::new_lit(LiteralKind::Str, span),
         Rule::block => {
             let (stmts, expr) = parse_block(dbg!(primary.into_inner()));
 

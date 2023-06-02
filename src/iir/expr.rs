@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::{
     ast::{
         ops::{BinaryOp, UnaryOp},
-        Expr, ExprData, ExprValueType,
+        Expr, ExprData, LiteralKind,
     },
     error::{LangError, LangErrorData},
     span::Span,
@@ -43,22 +43,22 @@ impl IIRExpr {
                 ExprData::UnOp(op, operand) => {
                     IIRExprData::UnOp(op, Box::new(Self::try_from(*operand, src)?))
                 }
-                ExprData::Lit(ExprValueType::Int) => {
+                ExprData::Lit(LiteralKind::Int) => {
                     IIRExprData::Const(Value::Int(src[other.span.range()].parse().map_err(
                         |pir| LangError::new(LangErrorData::ParseIntError(pir), other.span),
                     )?))
                 }
-                ExprData::Lit(ExprValueType::Float) => {
+                ExprData::Lit(LiteralKind::Float) => {
                     IIRExprData::Const(Value::Float(src[other.span.range()].parse().map_err(
                         |pfr| LangError::new(LangErrorData::ParseFloatError(pfr), other.span),
                     )?))
                 }
-                ExprData::Lit(ExprValueType::Str) => {
+                ExprData::Lit(LiteralKind::Str) => {
                     IIRExprData::Const(Value::Str(Rc::new(make_string(&src[other.span.range()]))))
                 }
-                ExprData::Lit(ExprValueType::True) => IIRExprData::Const(Value::Bool(true)),
-                ExprData::Lit(ExprValueType::False) => IIRExprData::Const(Value::Bool(false)),
-                ExprData::Lit(ExprValueType::None) => IIRExprData::Const(Value::None),
+                ExprData::Lit(LiteralKind::True) => IIRExprData::Const(Value::Bool(true)),
+                ExprData::Lit(LiteralKind::False) => IIRExprData::Const(Value::Bool(false)),
+                ExprData::Lit(LiteralKind::None) => IIRExprData::Const(Value::None),
                 ExprData::Var => IIRExprData::Var,
                 ExprData::Error => panic!("tried to convert ExprData::Error to IIRExprData"),
                 ExprData::Block(old_stmts, old_expr) => {
