@@ -2,7 +2,6 @@ mod scopes;
 
 use std::{collections::HashMap, io::Write, process::exit};
 
-use internment::ArcIntern;
 use scopes::ScopeStack;
 
 use crate::{
