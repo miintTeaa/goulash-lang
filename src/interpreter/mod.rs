@@ -245,7 +245,11 @@ impl IIRExprVisitor<IntpControlFlow> for Interpreter {
                     };
                     let rhs_type = rhs.get_type();
                     let old_type = old_val.get_type();
-                    if rhs_type == Type::None || rhs_type == old_type {
+                    if rhs_type == Type::None {
+                        self.scopes[scope_id]
+                            .delete(ident)
+                            .expect("should still exist");
+                    } else if rhs_type == old_type {
                         *old_val = rhs;
                     } else if rhs_type != old_type {
                         let (name, _) = self.scopes[scope_id]
