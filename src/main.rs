@@ -13,9 +13,11 @@ fn main() -> ExitCode {
         .next()
         .expect("first argument isn't program name; this is a bug in your system");
 
+    let file_name;
     let src;
     if let Some(arg) = args.next() {
-        src = match fs::read_to_string(arg) {
+        file_name = arg;
+        src = match fs::read_to_string(&file_name) {
             Ok(src) => src,
             Err(e) => {
                 eprintln!("{e}");
@@ -30,7 +32,7 @@ fn main() -> ExitCode {
     let stmts = match parse(&src) {
         Ok(stmts) => stmts,
         Err(e) => {
-            eprintln!("{e}");
+            eprintln!("{}", e.with_path(&file_name));
             return ExitCode::FAILURE;
         }
     };
@@ -51,7 +53,7 @@ fn main() -> ExitCode {
         }
         Err(e) => {
             for error in e {
-                eprintln!("{error}");
+                error.report(&file_name, &src);
             }
             return ExitCode::FAILURE;
         }

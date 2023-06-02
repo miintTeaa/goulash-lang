@@ -22,6 +22,21 @@ impl LangError {
     pub fn span(&self) -> Span {
         self.span
     }
+
+    pub fn report(&self, file_name: &str, src: &str) {
+        let mut line = 1;
+        let mut col = 1;
+
+        for i in 0..(self.span.start as usize) {
+            col += 1;
+            if src.as_bytes()[i] == b'\n' {
+                line += 1;
+                col = 1;
+            }
+        }
+
+        eprintln!("Error: [{file_name}:{line}:{col}]: {}", &self.data)
+    }
 }
 
 impl Display for LangError {
